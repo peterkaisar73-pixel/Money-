@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 
@@ -9,7 +8,6 @@
     <title>إدارة مصروفاتي</title>
 
     <style>
-
         * {
             box-sizing: border-box;
         }
@@ -19,19 +17,11 @@
             padding: 20px;
             font-family: Arial, sans-serif;
             background: #f4f6f8;
-            color: #222;
         }
 
         h1 {
             text-align: center;
-            margin-bottom: 30px;
         }
-
-        h2 {
-            margin-top: 25px;
-        }
-
-        /* الملخص */
 
         .summary {
             display: grid;
@@ -42,9 +32,9 @@
         .card {
             background: white;
             padding: 20px;
-            border-radius: 12px;
+            border-radius: 15px;
             text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .card h3 {
@@ -56,14 +46,13 @@
             font-weight: bold;
         }
 
-        /* نموذج إضافة العملية */
-
-        .form-box {
+        .form-box,
+        .table-box {
             background: white;
             padding: 20px;
             margin-top: 25px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-radius: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         label {
@@ -75,7 +64,7 @@
         input,
         select {
             width: 100%;
-            padding: 12px;
+            padding: 13px;
             margin-bottom: 15px;
             border: 1px solid #ccc;
             border-radius: 8px;
@@ -91,21 +80,6 @@
             color: white;
             font-size: 17px;
             cursor: pointer;
-        }
-
-        button:hover {
-            opacity: 0.85;
-        }
-
-        /* الجدول */
-
-        .table-box {
-            background: white;
-            padding: 15px;
-            margin-top: 25px;
-            border-radius: 12px;
-            overflow-x: auto;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
 
         table {
@@ -124,8 +98,6 @@
             background: #eee;
         }
 
-        /* الموبايل */
-
         @media (max-width: 700px) {
 
             .summary {
@@ -133,15 +105,9 @@
             }
 
             body {
-                padding: 12px;
+                padding: 10px;
             }
-
-            .amount {
-                font-size: 18px;
-            }
-
         }
-
     </style>
 
 </head>
@@ -152,7 +118,9 @@
     <h1>💰 إدارة مصروفاتي</h1>
 
 
+    <!-- ===================== -->
     <!-- ملخص الحساب -->
+    <!-- ===================== -->
 
     <h2>📊 ملخص الشهر</h2>
 
@@ -160,102 +128,106 @@
 
         <div class="card">
             <h3>💰 الدخل</h3>
-            <div class="amount" id="incomeTotal">0 جنيه</div>
+            <div class="amount" id="income">0 جنيه</div>
         </div>
 
         <div class="card">
             <h3>💸 المصروفات</h3>
-            <div class="amount" id="expenseTotal">0 جنيه</div>
+            <div class="amount" id="expenses">0 جنيه</div>
         </div>
 
         <div class="card">
             <h3>🏦 المدخرات</h3>
-            <div class="amount" id="savingTotal">0 جنيه</div>
+            <div class="amount" id="savings">0 جنيه</div>
         </div>
 
         <div class="card">
             <h3>📈 الاستثمارات</h3>
-            <div class="amount" id="investmentTotal">0 جنيه</div>
+            <div class="amount" id="investments">0 جنيه</div>
         </div>
 
         <div class="card">
             <h3>💳 الديون</h3>
-            <div class="amount" id="debtTotal">0 جنيه</div>
+            <div class="amount" id="debts">0 جنيه</div>
         </div>
 
         <div class="card">
             <h3>💵 المتبقي</h3>
-            <div class="amount" id="remainingTotal">0 جنيه</div>
+            <div class="amount" id="remaining">0 جنيه</div>
         </div>
 
     </div>
 
 
+    <!-- ===================== -->
     <!-- إضافة عملية -->
+    <!-- ===================== -->
 
     <div class="form-box">
 
-        <h2>➕ إضافة عملية جديدة</h2>
+        <h2>➕ إضافة عملية</h2>
 
         <label for="type">
-            نوع العملية:
+            نوع العملية
         </label>
 
         <select id="type">
 
-            <option value="income">دخل</option>
+            <option value="income">💰 دخل</option>
 
-            <option value="expense">مصروف</option>
+            <option value="expense">💸 مصروف</option>
 
-            <option value="saving">ادخار</option>
+            <option value="saving">🏦 ادخار</option>
 
-            <option value="investment">استثمار</option>
+            <option value="investment">📈 استثمار</option>
 
-            <option value="debt">سداد دين</option>
+            <option value="debt">💳 سداد دين</option>
 
         </select>
 
 
         <label for="amount">
-            المبلغ:
+            المبلغ
         </label>
 
         <input
-            type="number"
             id="amount"
-            placeholder="مثلاً: 3000"
+            type="number"
+            placeholder="مثال: 3000"
         >
 
 
         <label for="date">
-            التاريخ:
+            التاريخ
         </label>
 
         <input
-            type="date"
             id="date"
+            type="date"
         >
 
 
         <label for="description">
-            البيان:
+            البيان
         </label>
 
         <input
-            type="text"
             id="description"
-            placeholder="مثلاً: مرتب، بنزين، قسط..."
+            type="text"
+            placeholder="مثال: مرتب - بنزين - قسط"
         >
 
 
-        <button id="addButton" type="button">
+        <button id="addBtn">
             ➕ إضافة العملية
         </button>
 
     </div>
 
 
+    <!-- ===================== -->
     <!-- سجل العمليات -->
+    <!-- ===================== -->
 
     <div class="table-box">
 
@@ -274,7 +246,7 @@
 
             </thead>
 
-            <tbody id="transactionsTable">
+            <tbody id="transactions">
 
             </tbody>
 
@@ -283,59 +255,69 @@
     </div>
 
 
+    <!-- ===================== -->
+    <!-- JavaScript -->
+    <!-- ===================== -->
+
     <script>
 
-        // هنا هنخزن كل العمليات
-        let transactions = [];
+        // تحميل البيانات المحفوظة
+        let data = JSON.parse(
+            localStorage.getItem("myMoneyData")
+        ) || [];
 
 
-        // الحصول على الزر
-        const addButton = document.getElementById("addButton");
+        // زر الإضافة
+        document
+            .getElementById("addBtn")
+            .addEventListener("click", addTransaction);
 
 
-        // عند الضغط على إضافة العملية
-        addButton.addEventListener("click", function () {
+        // دالة إضافة العملية
+        function addTransaction() {
 
-            const type =
+            let type =
                 document.getElementById("type").value;
 
-            const amount =
-                Number(document.getElementById("amount").value);
+            let amount =
+                Number(
+                    document.getElementById("amount").value
+                );
 
-            const date =
+            let date =
                 document.getElementById("date").value;
 
-            const description =
+            let description =
                 document.getElementById("description").value.trim();
 
 
             // التأكد من البيانات
-            if (amount <= 0) {
+            if (!amount) {
 
-                alert("من فضلك اكتب مبلغ صحيح");
-
-                return;
-            }
-
-
-            if (date === "") {
-
-                alert("من فضلك اختر التاريخ");
+                alert("اكتب المبلغ أولاً");
 
                 return;
             }
 
 
-            if (description === "") {
+            if (!date) {
 
-                alert("من فضلك اكتب البيان");
+                alert("اختار التاريخ أولاً");
+
+                return;
+            }
+
+
+            if (!description) {
+
+                alert("اكتب البيان أولاً");
 
                 return;
             }
 
 
             // إنشاء العملية
-            const transaction = {
+            let transaction = {
 
                 type: type,
 
@@ -348,73 +330,116 @@
             };
 
 
-            // إضافة العملية للقائمة
-            transactions.push(transaction);
+            // إضافة العملية
+            data.push(transaction);
 
 
-            // تحديث الجدول
-            displayTransactions();
+            // حفظ البيانات
+            localStorage.setItem(
+                "myMoneyData",
+                JSON.stringify(data)
+            );
 
 
-            // تحديث الحسابات
-            updateSummary();
+            // تحديث الشاشة
+            showData();
 
 
-            // مسح المبلغ والبيان
+            // تنظيف الخانات
             document.getElementById("amount").value = "";
 
             document.getElementById("description").value = "";
 
 
-            alert("تمت إضافة العملية بنجاح ✅");
+            alert("تم تسجيل العملية ✅");
 
-        });
+        }
 
 
-        // عرض العمليات في الجدول
-        function displayTransactions() {
+        // عرض البيانات
+        function showData() {
 
-            const table =
-                document.getElementById("transactionsTable");
+            let table =
+                document.getElementById("transactions");
 
 
             table.innerHTML = "";
 
 
-            transactions.forEach(function (transaction) {
+            let income = 0;
+
+            let expenses = 0;
+
+            let savings = 0;
+
+            let investments = 0;
+
+            let debts = 0;
+
+
+            data.forEach(function(item) {
 
                 let typeName = "";
 
 
-                if (transaction.type === "income") {
+                if (item.type === "income") {
+
                     typeName = "دخل";
+
+                    income += item.amount;
+
                 }
 
-                if (transaction.type === "expense") {
+                else if (item.type === "expense") {
+
                     typeName = "مصروف";
+
+                    expenses += item.amount;
+
                 }
 
-                if (transaction.type === "saving") {
+                else if (item.type === "saving") {
+
                     typeName = "ادخار";
+
+                    savings += item.amount;
+
                 }
 
-                if (transaction.type === "investment") {
+                else if (item.type === "investment") {
+
                     typeName = "استثمار";
+
+                    investments += item.amount;
+
                 }
 
-                if (transaction.type === "debt") {
+                else if (item.type === "debt") {
+
                     typeName = "سداد دين";
+
+                    debts += item.amount;
+
                 }
 
 
-                const row = document.createElement("tr");
+                let row =
+                    document.createElement("tr");
 
 
                 row.innerHTML = `
-                    <td>${transaction.date}</td>
+
+                    <td>${item.date}</td>
+
                     <td>${typeName}</td>
-                    <td>${transaction.description}</td>
-                    <td>${transaction.amount.toLocaleString("ar-EG")} جنيه</td>
+
+                    <td>${item.description}</td>
+
+                    <td>
+                        ${item.amount.toLocaleString()}
+                        جنيه
+                    </td>
+
                 `;
 
 
@@ -422,45 +447,29 @@
 
             });
 
-        }
+
+            // تحديث الأرقام
+            document.getElementById("income").textContent =
+                income.toLocaleString() + " جنيه";
 
 
-        // تحديث الملخص
-        function updateSummary() {
-
-            let income = 0;
-            let expenses = 0;
-            let savings = 0;
-            let investments = 0;
-            let debts = 0;
+            document.getElementById("expenses").textContent =
+                expenses.toLocaleString() + " جنيه";
 
 
-            transactions.forEach(function (transaction) {
-
-                if (transaction.type === "income") {
-                    income += transaction.amount;
-                }
-
-                else if (transaction.type === "expense") {
-                    expenses += transaction.amount;
-                }
-
-                else if (transaction.type === "saving") {
-                    savings += transaction.amount;
-                }
-
-                else if (transaction.type === "investment") {
-                    investments += transaction.amount;
-                }
-
-                else if (transaction.type === "debt") {
-                    debts += transaction.amount;
-                }
-
-            });
+            document.getElementById("savings").textContent =
+                savings.toLocaleString() + " جنيه";
 
 
-            const remaining =
+            document.getElementById("investments").textContent =
+                investments.toLocaleString() + " جنيه";
+
+
+            document.getElementById("debts").textContent =
+                debts.toLocaleString() + " جنيه";
+
+
+            let remaining =
                 income -
                 expenses -
                 savings -
@@ -468,34 +477,17 @@
                 debts;
 
 
-            document.getElementById("incomeTotal").textContent =
-                income.toLocaleString("ar-EG") + " جنيه";
-
-
-            document.getElementById("expenseTotal").textContent =
-                expenses.toLocaleString("ar-EG") + " جنيه";
-
-
-            document.getElementById("savingTotal").textContent =
-                savings.toLocaleString("ar-EG") + " جنيه";
-
-
-            document.getElementById("investmentTotal").textContent =
-                investments.toLocaleString("ar-EG") + " جنيه";
-
-
-            document.getElementById("debtTotal").textContent =
-                debts.toLocaleString("ar-EG") + " جنيه";
-
-
-            document.getElementById("remainingTotal").textContent =
-                remaining.toLocaleString("ar-EG") + " جنيه";
+            document.getElementById("remaining").textContent =
+                remaining.toLocaleString() + " جنيه";
 
         }
+
+
+        // تشغيل البيانات عند فتح الصفحة
+        showData();
 
     </script>
 
 </body>
 
 </html>
-```

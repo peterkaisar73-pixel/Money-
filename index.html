@@ -2,12 +2,14 @@
 <html lang="ar" dir="rtl">
 
 <head>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>إدارة مصروفاتي</title>
+    <title>لوحة التحكم المالية</title>
 
     <style>
+
         * {
             box-sizing: border-box;
         }
@@ -17,11 +19,28 @@
             padding: 20px;
             font-family: Arial, sans-serif;
             background: #f4f6f8;
+            color: #222;
         }
 
         h1 {
             text-align: center;
+            margin-bottom: 8px;
         }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            margin-top: 30px;
+        }
+
+
+        /* =========================
+           بطاقات الملخص
+        ========================= */
 
         .summary {
             display: grid;
@@ -34,7 +53,7 @@
             padding: 20px;
             border-radius: 15px;
             text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
 
         .card h3 {
@@ -44,15 +63,67 @@
         .amount {
             font-size: 22px;
             font-weight: bold;
+            margin-top: 10px;
         }
 
+
+        /* =========================
+           مؤشرات النسب
+        ========================= */
+
+        .indicators {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .indicator {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .indicator-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .progress {
+            width: 100%;
+            height: 12px;
+            background: #e5e5e5;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: #333;
+            transition: width 0.4s;
+        }
+
+        .percentage {
+            margin-top: 8px;
+            font-weight: bold;
+        }
+
+
+        /* =========================
+           صندوق الإضافة
+        ========================= */
+
         .form-box,
-        .table-box {
+        .filter-box,
+        .table-box,
+        .analysis-box {
             background: white;
             padding: 20px;
             margin-top: 25px;
             border-radius: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
 
         label {
@@ -72,19 +143,100 @@
         }
 
         button {
-            width: 100%;
-            padding: 14px;
+            padding: 11px 16px;
             border: none;
             border-radius: 8px;
             background: #222;
             color: white;
-            font-size: 17px;
+            font-size: 15px;
             cursor: pointer;
         }
+
+        button:hover {
+            opacity: 0.85;
+        }
+
+        .main-button {
+            width: 100%;
+            padding: 14px;
+            font-size: 17px;
+        }
+
+
+        /* =========================
+           فلترة الشهر
+        ========================= */
+
+        .filter-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .filter-row input {
+            margin-bottom: 0;
+        }
+
+
+        /* =========================
+           التحليل
+        ========================= */
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .analysis-card {
+            background: #fafafa;
+            padding: 18px;
+            border-radius: 12px;
+        }
+
+        .analysis-card h3 {
+            margin-top: 0;
+        }
+
+        .category-row {
+            margin-bottom: 15px;
+        }
+
+        .category-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .category-bar {
+            height: 14px;
+            background: #ddd;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .category-fill {
+            height: 100%;
+            width: 0%;
+            background: #333;
+        }
+
+        .top-category {
+            font-size: 22px;
+            font-weight: bold;
+            text-align: center;
+            padding: 20px;
+        }
+
+
+        /* =========================
+           الجدول
+        ========================= */
 
         table {
             width: 100%;
             border-collapse: collapse;
+            min-width: 750px;
         }
 
         th,
@@ -98,16 +250,73 @@
             background: #eee;
         }
 
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        .edit-button {
+            background: #555;
+            margin-left: 5px;
+        }
+
+        .delete-button {
+            background: #a00000;
+        }
+
+
+        /* =========================
+           رسالة الحالة المالية
+        ========================= */
+
+        .financial-status {
+            margin-top: 25px;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 19px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+
+        /* =========================
+           الموبايل
+        ========================= */
+
         @media (max-width: 700px) {
+
+            body {
+                padding: 10px;
+            }
 
             .summary {
                 grid-template-columns: 1fr 1fr;
             }
 
-            body {
-                padding: 10px;
+            .indicators {
+                grid-template-columns: 1fr;
             }
+
+            .analysis-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-row {
+                flex-direction: column;
+            }
+
+            .filter-row input,
+            .filter-row button {
+                width: 100%;
+            }
+
+            .amount {
+                font-size: 18px;
+            }
+
         }
+
     </style>
 
 </head>
@@ -115,14 +324,19 @@
 
 <body>
 
-    <h1>💰 إدارة مصروفاتي</h1>
+
+    <h1>💰 لوحة التحكم المالية</h1>
+
+    <div class="subtitle">
+        تابع دخلك ومصروفاتك وادخارك واستثماراتك وديونك
+    </div>
 
 
-    <!-- ===================== -->
-    <!-- ملخص الحساب -->
-    <!-- ===================== -->
+    <!-- =========================
+         الملخص
+    ========================= -->
 
-    <h2>📊 ملخص الشهر</h2>
+    <h2>📊 الوضع المالي</h2>
 
     <div class="summary">
 
@@ -159,212 +373,780 @@
     </div>
 
 
-    <!-- ===================== -->
-    <!-- إضافة عملية -->
-    <!-- ===================== -->
+    <!-- =========================
+         النسب
+    ========================= -->
+
+    <div class="indicators">
+
+        <div class="indicator">
+
+            <div class="indicator-title">
+                🏦 نسبة الادخار من الدخل
+            </div>
+
+            <div class="progress">
+                <div
+                    class="progress-bar"
+                    id="savingProgress">
+                </div>
+            </div>
+
+            <div
+                class="percentage"
+                id="savingPercentage">
+                0%
+            </div>
+
+        </div>
+
+
+        <div class="indicator">
+
+            <div class="indicator-title">
+                📈 نسبة الاستثمار من الدخل
+            </div>
+
+            <div class="progress">
+                <div
+                    class="progress-bar"
+                    id="investmentProgress">
+                </div>
+            </div>
+
+            <div
+                class="percentage"
+                id="investmentPercentage">
+                0%
+            </div>
+
+        </div>
+
+
+        <div class="indicator">
+
+            <div class="indicator-title">
+                💸 نسبة المصروفات من الدخل
+            </div>
+
+            <div class="progress">
+                <div
+                    class="progress-bar"
+                    id="expenseProgress">
+                </div>
+            </div>
+
+            <div
+                class="percentage"
+                id="expensePercentage">
+                0%
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         الحالة المالية
+    ========================= -->
+
+    <div
+        class="financial-status"
+        id="financialStatus">
+
+        أدخل بياناتك لمعرفة وضعك المالي
+
+    </div>
+
+
+    <!-- =========================
+         إضافة عملية
+    ========================= -->
 
     <div class="form-box">
 
-        <h2>➕ إضافة عملية</h2>
+        <h2 id="formTitle">
+            ➕ إضافة عملية جديدة
+        </h2>
 
-        <label for="type">
+
+        <label>
             نوع العملية
         </label>
 
         <select id="type">
 
-            <option value="income">💰 دخل</option>
+            <option value="income">
+                💰 دخل
+            </option>
 
-            <option value="expense">💸 مصروف</option>
+            <option value="expense">
+                💸 مصروف
+            </option>
 
-            <option value="saving">🏦 ادخار</option>
+            <option value="saving">
+                🏦 ادخار
+            </option>
 
-            <option value="investment">📈 استثمار</option>
+            <option value="investment">
+                📈 استثمار
+            </option>
 
-            <option value="debt">💳 سداد دين</option>
+            <option value="debt">
+                💳 سداد دين
+            </option>
 
         </select>
 
 
-        <label for="amount">
+        <label>
+            البند
+        </label>
+
+        <select id="category">
+
+            <option value="مرتب">
+                💼 مرتب
+            </option>
+
+            <option value="بنزين">
+                ⛽ بنزين
+            </option>
+
+            <option value="أكل وشرب">
+                🍔 أكل وشرب
+            </option>
+
+            <option value="فواتير">
+                🧾 فواتير
+            </option>
+
+            <option value="أقساط">
+                💳 أقساط
+            </option>
+
+            <option value="تسوق">
+                🛒 تسوق
+            </option>
+
+            <option value="ترفيه">
+                🎮 ترفيه
+            </option>
+
+            <option value="صحة">
+                🏥 صحة
+            </option>
+
+            <option value="تعليم">
+                📚 تعليم
+            </option>
+
+            <option value="استثمار">
+                📈 استثمار
+            </option>
+
+            <option value="ادخار">
+                🏦 ادخار
+            </option>
+
+            <option value="دين">
+                💳 دين
+            </option>
+
+            <option value="other">
+                ➕ بند آخر
+            </option>
+
+        </select>
+
+
+        <div
+            id="customCategoryBox"
+            style="display:none;">
+
+            <label>
+                اسم البند المخصص
+            </label>
+
+            <input
+                type="text"
+                id="customCategory"
+                placeholder="مثال: صيانة سيارة"
+            >
+
+        </div>
+
+
+        <label>
             المبلغ
         </label>
 
         <input
-            id="amount"
             type="number"
+            id="amount"
             placeholder="مثال: 3000"
         >
 
 
-        <label for="date">
+        <label>
             التاريخ
         </label>
 
         <input
-            id="date"
             type="date"
+            id="date"
         >
 
 
-        <label for="description">
-            البيان
-        </label>
+        <button
+            id="addBtn"
+            class="main-button">
 
-        <input
-            id="description"
-            type="text"
-            placeholder="مثال: مرتب - بنزين - قسط"
-        >
-
-
-        <button id="addBtn">
             ➕ إضافة العملية
+
         </button>
 
     </div>
 
 
-    <!-- ===================== -->
-    <!-- سجل العمليات -->
-    <!-- ===================== -->
+    <!-- =========================
+         فلترة
+    ========================= -->
+
+    <div class="filter-box">
+
+        <h2>📅 تحليل شهر معين</h2>
+
+        <div class="filter-row">
+
+            <input
+                type="month"
+                id="monthFilter">
+
+            <button id="filterBtn">
+                🔍 عرض الشهر
+            </button>
+
+            <button id="showAllBtn">
+                📋 عرض الكل
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         تحليل المصروفات
+    ========================= -->
+
+    <div class="analysis-box">
+
+        <h2>📊 تحليل المصروفات</h2>
+
+        <div class="analysis-grid">
+
+            <div class="analysis-card">
+
+                <h3>
+                    🏆 أكثر بند صرفت عليه
+                </h3>
+
+                <div
+                    class="top-category"
+                    id="topCategory">
+
+                    لا توجد بيانات
+
+                </div>
+
+            </div>
+
+
+            <div class="analysis-card">
+
+                <h3>
+                    💸 المصروفات حسب البنود
+                </h3>
+
+                <div id="categoryAnalysis">
+
+                    لا توجد مصروفات
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         تحليل الديون
+    ========================= -->
+
+    <div class="analysis-box">
+
+        <h2>💳 تحليل الديون</h2>
+
+        <div class="analysis-grid">
+
+            <div class="analysis-card">
+
+                <h3>
+                    إجمالي سداد الديون
+                </h3>
+
+                <div
+                    class="amount"
+                    id="debtAnalysis">
+
+                    0 جنيه
+
+                </div>
+
+            </div>
+
+            <div class="analysis-card">
+
+                <h3>
+                    المتبقي بعد الديون
+                </h3>
+
+                <div
+                    class="amount"
+                    id="afterDebt">
+
+                    0 جنيه
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         سجل العمليات
+    ========================= -->
 
     <div class="table-box">
 
         <h2>📋 سجل العمليات</h2>
 
-        <table>
+        <div class="table-wrapper">
 
-            <thead>
+            <table>
 
-                <tr>
-                    <th>التاريخ</th>
-                    <th>النوع</th>
-                    <th>البيان</th>
-                    <th>المبلغ</th>
-                </tr>
+                <thead>
 
-            </thead>
+                    <tr>
 
-            <tbody id="transactions">
+                        <th>التاريخ</th>
 
-            </tbody>
+                        <th>النوع</th>
 
-        </table>
+                        <th>البند</th>
+
+                        <th>المبلغ</th>
+
+                        <th>الإجراءات</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="transactions">
+
+                </tbody>
+
+            </table>
+
+        </div>
 
     </div>
 
 
-    <!-- ===================== -->
-    <!-- JavaScript -->
-    <!-- ===================== -->
-
     <script>
 
-        // تحميل البيانات المحفوظة
-        let data = JSON.parse(
-            localStorage.getItem("myMoneyData")
-        ) || [];
+
+        /* =========================
+           تحميل البيانات
+        ========================= */
+
+        let data =
+            JSON.parse(
+                localStorage.getItem("myMoneyData")
+            ) || [];
 
 
-        // زر الإضافة
-        document
-            .getElementById("addBtn")
-            .addEventListener("click", addTransaction);
+        let editingIndex = -1;
+
+        let currentMonth = null;
 
 
-        // دالة إضافة العملية
-        function addTransaction() {
+        /* =========================
+           عناصر الصفحة
+        ========================= */
 
-            let type =
-                document.getElementById("type").value;
+        const type =
+            document.getElementById("type");
 
-            let amount =
-                Number(
-                    document.getElementById("amount").value
+        const category =
+            document.getElementById("category");
+
+        const customCategoryBox =
+            document.getElementById(
+                "customCategoryBox"
+            );
+
+        const customCategory =
+            document.getElementById(
+                "customCategory"
+            );
+
+        const amount =
+            document.getElementById("amount");
+
+        const date =
+            document.getElementById("date");
+
+        const addBtn =
+            document.getElementById("addBtn");
+
+
+        /* =========================
+           البند المخصص
+        ========================= */
+
+        category.addEventListener(
+            "change",
+            function () {
+
+                if (category.value === "other") {
+
+                    customCategoryBox.style.display =
+                        "block";
+
+                } else {
+
+                    customCategoryBox.style.display =
+                        "none";
+
+                    customCategory.value = "";
+
+                }
+
+            }
+        );
+
+
+        /* =========================
+           إضافة / تعديل
+        ========================= */
+
+        addBtn.addEventListener(
+            "click",
+            function () {
+
+                let selectedCategory =
+                    category.value;
+
+
+                if (
+                    selectedCategory === "other"
+                ) {
+
+                    selectedCategory =
+                        customCategory.value.trim();
+
+
+                    if (
+                        selectedCategory === ""
+                    ) {
+
+                        alert(
+                            "اكتب اسم البند"
+                        );
+
+                        return;
+
+                    }
+
+                }
+
+
+                let amountValue =
+                    Number(amount.value);
+
+
+                let dateValue =
+                    date.value;
+
+
+                if (amountValue <= 0) {
+
+                    alert(
+                        "اكتب مبلغ صحيح"
+                    );
+
+                    return;
+
+                }
+
+
+                if (dateValue === "") {
+
+                    alert(
+                        "اختار التاريخ"
+                    );
+
+                    return;
+
+                }
+
+
+                const transaction = {
+
+                    type: type.value,
+
+                    category:
+                        selectedCategory,
+
+                    amount:
+                        amountValue,
+
+                    date:
+                        dateValue
+
+                };
+
+
+                if (editingIndex !== -1) {
+
+                    data[editingIndex] =
+                        transaction;
+
+                    editingIndex = -1;
+
+                    addBtn.textContent =
+                        "➕ إضافة العملية";
+
+                    document
+                        .getElementById(
+                            "formTitle"
+                        )
+                        .textContent =
+                        "➕ إضافة عملية جديدة";
+
+                }
+
+                else {
+
+                    data.push(transaction);
+
+                }
+
+
+                saveData();
+
+                showData();
+
+                clearForm();
+
+                alert(
+                    "تم حفظ العملية ✅"
                 );
 
-            let date =
-                document.getElementById("date").value;
-
-            let description =
-                document.getElementById("description").value.trim();
-
-
-            // التأكد من البيانات
-            if (!amount) {
-
-                alert("اكتب المبلغ أولاً");
-
-                return;
             }
+        );
 
 
-            if (!date) {
+        /* =========================
+           حفظ البيانات
+        ========================= */
 
-                alert("اختار التاريخ أولاً");
+        function saveData() {
 
-                return;
-            }
-
-
-            if (!description) {
-
-                alert("اكتب البيان أولاً");
-
-                return;
-            }
-
-
-            // إنشاء العملية
-            let transaction = {
-
-                type: type,
-
-                amount: amount,
-
-                date: date,
-
-                description: description
-
-            };
-
-
-            // إضافة العملية
-            data.push(transaction);
-
-
-            // حفظ البيانات
             localStorage.setItem(
                 "myMoneyData",
                 JSON.stringify(data)
             );
 
-
-            // تحديث الشاشة
-            showData();
+        }
 
 
-            // تنظيف الخانات
-            document.getElementById("amount").value = "";
+        /* =========================
+           تنظيف النموذج
+        ========================= */
 
-            document.getElementById("description").value = "";
+        function clearForm() {
 
+            amount.value = "";
 
-            alert("تم تسجيل العملية ✅");
+            date.value = "";
+
+            customCategory.value = "";
+
+            category.value = "مرتب";
+
+            customCategoryBox.style.display =
+                "none";
 
         }
 
 
-        // عرض البيانات
+        /* =========================
+           اسم نوع العملية
+        ========================= */
+
+        function getTypeName(value) {
+
+            if (value === "income")
+                return "دخل";
+
+            if (value === "expense")
+                return "مصروف";
+
+            if (value === "saving")
+                return "ادخار";
+
+            if (value === "investment")
+                return "استثمار";
+
+            if (value === "debt")
+                return "سداد دين";
+
+            return "";
+
+        }
+
+
+        /* =========================
+           عرض البيانات
+        ========================= */
+
         function showData() {
 
-            let table =
-                document.getElementById("transactions");
+            const table =
+                document.getElementById(
+                    "transactions"
+                );
 
 
             table.innerHTML = "";
 
+
+            let filteredData =
+                data.map(
+                    function(item, index) {
+
+                        return {
+                            item: item,
+                            index: index
+                        };
+
+                    }
+                );
+
+
+            if (currentMonth !== null) {
+
+                filteredData =
+                    filteredData.filter(
+                        function(record) {
+
+                            return record.item.date
+                                .startsWith(
+                                    currentMonth
+                                );
+
+                        }
+                    );
+
+            }
+
+
+            filteredData.forEach(
+                function(record) {
+
+                    const item =
+                        record.item;
+
+                    const index =
+                        record.index;
+
+
+                    const row =
+                        document.createElement(
+                            "tr"
+                        );
+
+
+                    row.innerHTML = `
+
+                        <td>
+                            ${item.date}
+                        </td>
+
+                        <td>
+                            ${getTypeName(item.type)}
+                        </td>
+
+                        <td>
+                            ${item.category}
+                        </td>
+
+                        <td>
+                            ${item.amount.toLocaleString("ar-EG")}
+                            جنيه
+                        </td>
+
+                        <td>
+
+                            <button
+                                class="edit-button"
+                                onclick="editTransaction(${index})">
+
+                                ✏️ تعديل
+
+                            </button>
+
+                            <button
+                                class="delete-button"
+                                onclick="deleteTransaction(${index})">
+
+                                🗑️ حذف
+
+                            </button>
+
+                        </td>
+
+                    `;
+
+
+                    table.appendChild(row);
+
+                }
+            );
+
+
+            updateDashboard(
+                filteredData
+            );
+
+        }
+
+
+        /* =========================
+           Dashboard
+        ========================= */
+
+        function updateDashboard(records) {
 
             let income = 0;
 
@@ -377,99 +1159,80 @@
             let debts = 0;
 
 
-            data.forEach(function(item) {
-
-                let typeName = "";
+            let categories = {};
 
 
-                if (item.type === "income") {
+            records.forEach(
+                function(record) {
 
-                    typeName = "دخل";
+                    const item =
+                        record.item;
 
-                    income += item.amount;
+
+                    if (
+                        item.type === "income"
+                    ) {
+
+                        income += item.amount;
+
+                    }
+
+                    else if (
+                        item.type === "expense"
+                    ) {
+
+                        expenses += item.amount;
+
+
+                        if (
+                            !categories[
+                                item.category
+                            ]
+                        ) {
+
+                            categories[
+                                item.category
+                            ] = 0;
+
+                        }
+
+
+                        categories[
+                            item.category
+                        ] += item.amount;
+
+                    }
+
+                    else if (
+                        item.type === "saving"
+                    ) {
+
+                        savings += item.amount;
+
+                    }
+
+                    else if (
+                        item.type === "investment"
+                    ) {
+
+                        investments +=
+                            item.amount;
+
+                    }
+
+                    else if (
+                        item.type === "debt"
+                    ) {
+
+                        debts += item.amount;
+
+                    }
 
                 }
-
-                else if (item.type === "expense") {
-
-                    typeName = "مصروف";
-
-                    expenses += item.amount;
-
-                }
-
-                else if (item.type === "saving") {
-
-                    typeName = "ادخار";
-
-                    savings += item.amount;
-
-                }
-
-                else if (item.type === "investment") {
-
-                    typeName = "استثمار";
-
-                    investments += item.amount;
-
-                }
-
-                else if (item.type === "debt") {
-
-                    typeName = "سداد دين";
-
-                    debts += item.amount;
-
-                }
+            );
 
 
-                let row =
-                    document.createElement("tr");
-
-
-                row.innerHTML = `
-
-                    <td>${item.date}</td>
-
-                    <td>${typeName}</td>
-
-                    <td>${item.description}</td>
-
-                    <td>
-                        ${item.amount.toLocaleString()}
-                        جنيه
-                    </td>
-
-                `;
-
-
-                table.appendChild(row);
-
-            });
-
-
-            // تحديث الأرقام
-            document.getElementById("income").textContent =
-                income.toLocaleString() + " جنيه";
-
-
-            document.getElementById("expenses").textContent =
-                expenses.toLocaleString() + " جنيه";
-
-
-            document.getElementById("savings").textContent =
-                savings.toLocaleString() + " جنيه";
-
-
-            document.getElementById("investments").textContent =
-                investments.toLocaleString() + " جنيه";
-
-
-            document.getElementById("debts").textContent =
-                debts.toLocaleString() + " جنيه";
-
-
-            let remaining =
+            const remaining =
                 income -
                 expenses -
                 savings -
@@ -477,13 +1240,524 @@
                 debts;
 
 
-            document.getElementById("remaining").textContent =
-                remaining.toLocaleString() + " جنيه";
+            /* ===== الأرقام ===== */
+
+            document.getElementById(
+                "income"
+            ).textContent =
+                income.toLocaleString("ar-EG")
+                + " جنيه";
+
+
+            document.getElementById(
+                "expenses"
+            ).textContent =
+                expenses.toLocaleString("ar-EG")
+                + " جنيه";
+
+
+            document.getElementById(
+                "savings"
+            ).textContent =
+                savings.toLocaleString("ar-EG")
+                + " جنيه";
+
+
+            document.getElementById(
+                "investments"
+            ).textContent =
+                investments.toLocaleString("ar-EG")
+                + " جنيه";
+
+
+            document.getElementById(
+                "debts"
+            ).textContent =
+                debts.toLocaleString("ar-EG")
+                + " جنيه";
+
+
+            document.getElementById(
+                "remaining"
+            ).textContent =
+                remaining.toLocaleString("ar-EG")
+                + " جنيه";
+
+
+            /* =========================
+               النسب
+            ========================= */
+
+            let savingPercent = 0;
+
+            let investmentPercent = 0;
+
+            let expensePercent = 0;
+
+
+            if (income > 0) {
+
+                savingPercent =
+                    (savings / income) * 100;
+
+                investmentPercent =
+                    (investments / income) * 100;
+
+                expensePercent =
+                    (expenses / income) * 100;
+
+            }
+
+
+            document.getElementById(
+                "savingPercentage"
+            ).textContent =
+                savingPercent.toFixed(1) + "%";
+
+
+            document.getElementById(
+                "investmentPercentage"
+            ).textContent =
+                investmentPercent.toFixed(1) + "%";
+
+
+            document.getElementById(
+                "expensePercentage"
+            ).textContent =
+                expensePercent.toFixed(1) + "%";
+
+
+            document.getElementById(
+                "savingProgress"
+            ).style.width =
+                Math.min(
+                    savingPercent,
+                    100
+                ) + "%";
+
+
+            document.getElementById(
+                "investmentProgress"
+            ).style.width =
+                Math.min(
+                    investmentPercent,
+                    100
+                ) + "%";
+
+
+            document.getElementById(
+                "expenseProgress"
+            ).style.width =
+                Math.min(
+                    expensePercent,
+                    100
+                ) + "%";
+
+
+            /* =========================
+               الحالة المالية
+            ========================= */
+
+            let status = "";
+
+
+            if (income === 0) {
+
+                status =
+                    "أضف دخلك وعملياتك لمعرفة وضعك المالي.";
+
+            }
+
+            else if (remaining < 0) {
+
+                status =
+                    "⚠️ مصروفاتك والتزاماتك أكبر من دخلك.";
+
+            }
+
+            else if (
+                savings + investments >=
+                income * 0.20
+            ) {
+
+                status =
+                    "🔥 ممتاز! أنت تخصص 20% أو أكثر من دخلك للادخار والاستثمار.";
+
+            }
+
+            else if (
+                savings + investments > 0
+            ) {
+
+                status =
+                    "👍 جيد، لديك ادخار واستثمار. حاول زيادة النسبة تدريجيًا.";
+
+            }
+
+            else {
+
+                status =
+                    "💡 حاول تخصيص جزء ثابت من دخلك للادخار أو الاستثمار.";
+
+            }
+
+
+            document.getElementById(
+                "financialStatus"
+            ).textContent =
+                status;
+
+
+            /* =========================
+               تحليل الديون
+            ========================= */
+
+            document.getElementById(
+                "debtAnalysis"
+            ).textContent =
+                debts.toLocaleString("ar-EG")
+                + " جنيه";
+
+
+            const afterDebt =
+                income -
+                expenses -
+                savings -
+                investments -
+                debts;
+
+
+            document.getElementById(
+                "afterDebt"
+            ).textContent =
+                afterDebt.toLocaleString("ar-EG")
+                + " جنيه";
+
+
+            /* =========================
+               أكثر بند
+            ========================= */
+
+            const categoryEntries =
+                Object.entries(categories);
+
+
+            categoryEntries.sort(
+                function(a, b) {
+
+                    return b[1] - a[1];
+
+                }
+            );
+
+
+            const topCategory =
+                document.getElementById(
+                    "topCategory"
+                );
+
+
+            if (
+                categoryEntries.length === 0
+            ) {
+
+                topCategory.textContent =
+                    "لا توجد مصروفات";
+
+            }
+
+            else {
+
+                topCategory.innerHTML = `
+
+                    🏆 ${categoryEntries[0][0]}
+
+                    <br>
+
+                    <small>
+                        ${categoryEntries[0][1].toLocaleString("ar-EG")}
+                        جنيه
+                    </small>
+
+                `;
+
+            }
+
+
+            /* =========================
+               تحليل البنود
+            ========================= */
+
+            const categoryAnalysis =
+                document.getElementById(
+                    "categoryAnalysis"
+                );
+
+
+            categoryAnalysis.innerHTML = "";
+
+
+            if (
+                categoryEntries.length === 0
+            ) {
+
+                categoryAnalysis.textContent =
+                    "لا توجد مصروفات";
+
+            }
+
+            else {
+
+                categoryEntries.forEach(
+                    function(entry) {
+
+                        const name =
+                            entry[0];
+
+                        const value =
+                            entry[1];
+
+
+                        const percentage =
+                            expenses > 0
+                                ? (value / expenses) * 100
+                                : 0;
+
+
+                        const div =
+                            document.createElement(
+                                "div"
+                            );
+
+
+                        div.className =
+                            "category-row";
+
+
+                        div.innerHTML = `
+
+                            <div class="category-info">
+
+                                <span>
+                                    ${name}
+                                </span>
+
+                                <span>
+                                    ${value.toLocaleString("ar-EG")}
+                                    جنيه
+                                    (${percentage.toFixed(1)}%)
+                                </span>
+
+                            </div>
+
+                            <div class="category-bar">
+
+                                <div
+                                    class="category-fill"
+                                    style="width:${percentage}%">
+                                </div>
+
+                            </div>
+
+                        `;
+
+
+                        categoryAnalysis.appendChild(
+                            div
+                        );
+
+                    }
+                );
+
+            }
 
         }
 
 
-        // تشغيل البيانات عند فتح الصفحة
+        /* =========================
+           تعديل
+        ========================= */
+
+        function editTransaction(index) {
+
+            const item =
+                data[index];
+
+
+            type.value =
+                item.type;
+
+
+            amount.value =
+                item.amount;
+
+
+            date.value =
+                item.date;
+
+
+            const exists =
+                Array.from(
+                    category.options
+                ).some(
+                    function(option) {
+
+                        return option.value ===
+                            item.category;
+
+                    }
+                );
+
+
+            if (exists) {
+
+                category.value =
+                    item.category;
+
+                customCategoryBox.style.display =
+                    "none";
+
+            }
+
+            else {
+
+                category.value =
+                    "other";
+
+                customCategoryBox.style.display =
+                    "block";
+
+                customCategory.value =
+                    item.category;
+
+            }
+
+
+            editingIndex =
+                index;
+
+
+            addBtn.textContent =
+                "💾 حفظ التعديل";
+
+
+            document.getElementById(
+                "formTitle"
+            ).textContent =
+                "✏️ تعديل العملية";
+
+
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth"
+            });
+
+        }
+
+
+        /* =========================
+           حذف
+        ========================= */
+
+        function deleteTransaction(index) {
+
+            const confirmed =
+                confirm(
+                    "هل أنت متأكد من حذف العملية؟"
+                );
+
+
+            if (!confirmed) {
+
+                return;
+
+            }
+
+
+            data.splice(
+                index,
+                1
+            );
+
+
+            saveData();
+
+            showData();
+
+
+            alert(
+                "تم حذف العملية 🗑️"
+            );
+
+        }
+
+
+        /* =========================
+           فلترة الشهر
+        ========================= */
+
+        document
+            .getElementById("filterBtn")
+            .addEventListener(
+                "click",
+                function() {
+
+                    const month =
+                        document.getElementById(
+                            "monthFilter"
+                        ).value;
+
+
+                    if (month === "") {
+
+                        alert(
+                            "اختار الشهر أولاً"
+                        );
+
+                        return;
+
+                    }
+
+
+                    currentMonth =
+                        month;
+
+
+                    showData();
+
+                }
+            );
+
+
+        /* =========================
+           عرض الكل
+        ========================= */
+
+        document
+            .getElementById("showAllBtn")
+            .addEventListener(
+                "click",
+                function() {
+
+                    currentMonth =
+                        null;
+
+
+                    document.getElementById(
+                        "monthFilter"
+                    ).value = "";
+
+
+                    showData();
+
+                }
+            );
+
+
+        /* =========================
+           تشغيل البرنامج
+        ========================= */
+
         showData();
 
     </script>

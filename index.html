@@ -2,11 +2,13 @@
 <html lang="ar" dir="rtl">
 
 <head>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>لوحة التحكم المالية</title>
+    <title>Money Follow - متابعتي المالية</title>
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
 
@@ -16,33 +18,231 @@
 
         body {
             margin: 0;
-            padding: 20px;
-            font-family: Arial, sans-serif;
+            font-family: Arial, Tahoma, sans-serif;
             background: #f4f6f8;
             color: #222;
         }
 
-        h1 {
-            text-align: center;
-            margin-bottom: 8px;
+        button,
+        input,
+        select {
+            font-family: inherit;
         }
 
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
+        button {
+            cursor: pointer;
         }
 
-        h2 {
-            margin-top: 30px;
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 20px;
         }
-
 
         /* =========================
-           بطاقات الملخص
+           LOGIN
         ========================= */
 
-        .summary {
+        #authScreen {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #eef2f3, #dfe9f3);
+        }
+
+        .auth-box {
+            width: 100%;
+            max-width: 430px;
+            background: white;
+            padding: 30px;
+            border-radius: 22px;
+            box-shadow: 0 10px 35px rgba(0,0,0,.12);
+        }
+
+        .logo {
+            text-align: center;
+            font-size: 42px;
+            margin-bottom: 5px;
+        }
+
+        .auth-box h1 {
+            text-align: center;
+            margin: 5px 0;
+        }
+
+        .auth-subtitle {
+            text-align: center;
+            color: #777;
+            margin-bottom: 25px;
+        }
+
+        .auth-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .auth-tab {
+            background: #eee;
+            color: #333;
+        }
+
+        .auth-tab.active {
+            background: #222;
+            color: white;
+        }
+
+        .auth-message {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 10px;
+            display: none;
+            text-align: center;
+        }
+
+        .auth-message.success {
+            display: block;
+            background: #e7f7ed;
+            color: #176b35;
+        }
+
+        .auth-message.error {
+            display: block;
+            background: #ffe8e8;
+            color: #a00000;
+        }
+
+        /* =========================
+           GENERAL
+        ========================= */
+
+        .hidden {
+            display: none !important;
+        }
+
+        header {
+            background: white;
+            border-bottom: 1px solid #ddd;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+
+        .header-inner {
+            max-width: 1200px;
+            margin: auto;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .brand {
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .user-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #555;
+            font-size: 14px;
+        }
+
+        h1,
+        h2,
+        h3 {
+            margin-top: 0;
+        }
+
+        .section-title {
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        /* =========================
+           BUTTONS
+        ========================= */
+
+        button {
+            border: 0;
+            border-radius: 9px;
+            padding: 11px 16px;
+            background: #222;
+            color: white;
+            font-size: 15px;
+        }
+
+        button:hover {
+            opacity: .86;
+        }
+
+        .secondary {
+            background: #666;
+        }
+
+        .danger {
+            background: #a00000;
+        }
+
+        .success {
+            background: #176b35;
+        }
+
+        .warning {
+            background: #8a5a00;
+        }
+
+        .full-button {
+            width: 100%;
+            padding: 14px;
+        }
+
+        /* =========================
+           FORMS
+        ========================= */
+
+        .box {
+            background: white;
+            border-radius: 18px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 3px 12px rgba(0,0,0,.07);
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 7px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 13px;
+            border: 1px solid #ccc;
+            border-radius: 9px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            background: white;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        /* =========================
+           SUMMARY
+        ========================= */
+
+        .summary-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 15px;
@@ -51,135 +251,79 @@
         .card {
             background: white;
             padding: 20px;
-            border-radius: 15px;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-radius: 17px;
+            box-shadow: 0 3px 12px rgba(0,0,0,.07);
         }
 
-        .card h3 {
-            margin-top: 0;
+        .card-title {
+            color: #666;
+            font-weight: bold;
         }
 
-        .amount {
-            font-size: 22px;
+        .card-value {
+            font-size: 25px;
             font-weight: bold;
             margin-top: 10px;
         }
 
-
         /* =========================
-           مؤشرات النسب
+           INDICATORS
         ========================= */
 
-        .indicators {
+        .indicator-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 15px;
-            margin-top: 20px;
-        }
-
-        .indicator {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-
-        .indicator-title {
-            font-weight: bold;
-            margin-bottom: 10px;
+            margin-top: 15px;
         }
 
         .progress {
-            width: 100%;
-            height: 12px;
+            height: 13px;
             background: #e5e5e5;
             border-radius: 20px;
             overflow: hidden;
+            margin-top: 12px;
         }
 
         .progress-bar {
             height: 100%;
             width: 0%;
             background: #333;
-            transition: width 0.4s;
+            transition: width .4s;
         }
 
-        .percentage {
+        .percent {
             margin-top: 8px;
             font-weight: bold;
         }
 
-
         /* =========================
-           صندوق الإضافة
+           STATUS
         ========================= */
 
-        .form-box,
-        .filter-box,
-        .table-box,
-        .analysis-box {
-            background: white;
-            padding: 20px;
-            margin-top: 25px;
-            border-radius: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-
-        label {
-            display: block;
-            margin-bottom: 7px;
+        #financialStatus {
+            text-align: center;
+            font-size: 18px;
             font-weight: bold;
         }
 
-        input,
-        select {
-            width: 100%;
-            padding: 13px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-size: 16px;
-        }
-
-        button {
-            padding: 11px 16px;
-            border: none;
-            border-radius: 8px;
-            background: #222;
-            color: white;
-            font-size: 15px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            opacity: 0.85;
-        }
-
-        .main-button {
-            width: 100%;
-            padding: 14px;
-            font-size: 17px;
-        }
-
-
         /* =========================
-           فلترة الشهر
+           FILTER
         ========================= */
 
         .filter-row {
-            display: flex;
+            display: grid;
+            grid-template-columns: 1fr auto auto;
             gap: 10px;
             align-items: center;
         }
 
         .filter-row input {
-            margin-bottom: 0;
+            margin: 0;
         }
 
-
         /* =========================
-           التحليل
+           ANALYSIS
         ========================= */
 
         .analysis-grid {
@@ -188,14 +332,11 @@
             gap: 20px;
         }
 
-        .analysis-card {
-            background: #fafafa;
-            padding: 18px;
-            border-radius: 12px;
-        }
-
-        .analysis-card h3 {
-            margin-top: 0;
+        .top-category {
+            text-align: center;
+            font-size: 25px;
+            font-weight: bold;
+            padding: 20px;
         }
 
         .category-row {
@@ -205,11 +346,12 @@
         .category-info {
             display: flex;
             justify-content: space-between;
+            gap: 10px;
             margin-bottom: 6px;
         }
 
         .category-bar {
-            height: 14px;
+            height: 13px;
             background: #ddd;
             border-radius: 20px;
             overflow: hidden;
@@ -217,26 +359,21 @@
 
         .category-fill {
             height: 100%;
-            width: 0%;
             background: #333;
         }
 
-        .top-category {
-            font-size: 22px;
-            font-weight: bold;
-            text-align: center;
-            padding: 20px;
-        }
-
-
         /* =========================
-           الجدول
+           TABLE
         ========================= */
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
 
         table {
             width: 100%;
+            min-width: 800px;
             border-collapse: collapse;
-            min-width: 750px;
         }
 
         th,
@@ -250,51 +387,133 @@
             background: #eee;
         }
 
-        .table-wrapper {
-            overflow-x: auto;
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
         }
 
-        .edit-button {
-            background: #555;
-            margin-left: 5px;
+        .action-buttons button {
+            padding: 8px 10px;
+            font-size: 13px;
         }
 
-        .delete-button {
-            background: #a00000;
-        }
-
-
-        /* =========================
-           رسالة الحالة المالية
-        ========================= */
-
-        .financial-status {
-            margin-top: 25px;
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            text-align: center;
-            font-size: 19px;
+        .type-income {
+            color: #176b35;
             font-weight: bold;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
 
+        .type-expense {
+            color: #a00000;
+            font-weight: bold;
+        }
+
+        .type-saving {
+            color: #555;
+            font-weight: bold;
+        }
+
+        .type-investment {
+            color: #6b4b00;
+            font-weight: bold;
+        }
+
+        .type-debt {
+            color: #7a0000;
+            font-weight: bold;
+        }
 
         /* =========================
-           الموبايل
+           TABS
         ========================= */
 
-        @media (max-width: 700px) {
+        .main-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
 
-            body {
-                padding: 10px;
+        .main-tab.active {
+            background: #222;
+        }
+
+        .main-tab:not(.active) {
+            background: #ddd;
+            color: #222;
+        }
+
+        /* =========================
+           GOALS
+        ========================= */
+
+        .goal-box {
+            border: 1px solid #ddd;
+            border-radius: 13px;
+            padding: 15px;
+            margin-bottom: 12px;
+        }
+
+        .goal-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        /* =========================
+           TOAST
+        ========================= */
+
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #222;
+            color: white;
+            padding: 13px 20px;
+            border-radius: 10px;
+            z-index: 100;
+            display: none;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        /* =========================
+           LOADING
+        ========================= */
+
+        #loading {
+            position: fixed;
+            inset: 0;
+            background: rgba(255,255,255,.85);
+            z-index: 200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        /* =========================
+           MOBILE
+        ========================= */
+
+        @media (max-width: 750px) {
+
+            .container {
+                padding: 12px;
             }
 
-            .summary {
+            .header-inner {
+                padding: 12px;
+            }
+
+            .summary-grid {
                 grid-template-columns: 1fr 1fr;
             }
 
-            .indicators {
+            .indicator-grid {
                 grid-template-columns: 1fr;
             }
 
@@ -302,352 +521,432 @@
                 grid-template-columns: 1fr;
             }
 
-            .filter-row {
-                flex-direction: column;
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 0;
             }
 
-            .filter-row input,
+            .filter-row {
+                grid-template-columns: 1fr;
+            }
+
             .filter-row button {
                 width: 100%;
             }
 
-            .amount {
-                font-size: 18px;
+            .user-area span {
+                display: none;
+            }
+
+            .card-value {
+                font-size: 20px;
+            }
+
+            .main-tabs {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .main-tabs button {
+                width: 100%;
             }
 
         }
 
     </style>
-
 </head>
 
 
 <body>
 
 
-    <h1>💰 لوحة التحكم المالية</h1>
+<!-- =========================================================
+     AUTH SCREEN
+========================================================= -->
 
-    <div class="subtitle">
-        تابع دخلك ومصروفاتك وادخارك واستثماراتك وديونك
-    </div>
+<div id="authScreen">
 
+    <div class="auth-box">
 
-    <!-- =========================
-         الملخص
-    ========================= -->
+        <div class="logo">💰</div>
 
-    <h2>📊 الوضع المالي</h2>
+        <h1>Money Follow</h1>
 
-    <div class="summary">
-
-        <div class="card">
-            <h3>💰 الدخل</h3>
-            <div class="amount" id="income">0 جنيه</div>
+        <div class="auth-subtitle">
+            متابعتي المالية الشخصية
         </div>
 
-        <div class="card">
-            <h3>💸 المصروفات</h3>
-            <div class="amount" id="expenses">0 جنيه</div>
-        </div>
 
-        <div class="card">
-            <h3>🏦 المدخرات</h3>
-            <div class="amount" id="savings">0 جنيه</div>
-        </div>
+        <div class="auth-tabs">
 
-        <div class="card">
-            <h3>📈 الاستثمارات</h3>
-            <div class="amount" id="investments">0 جنيه</div>
-        </div>
+            <button
+                id="loginTab"
+                class="auth-tab active"
+                onclick="showLogin()">
 
-        <div class="card">
-            <h3>💳 الديون</h3>
-            <div class="amount" id="debts">0 جنيه</div>
-        </div>
+                تسجيل الدخول
 
-        <div class="card">
-            <h3>💵 المتبقي</h3>
-            <div class="amount" id="remaining">0 جنيه</div>
-        </div>
+            </button>
 
-    </div>
+            <button
+                id="signupTab"
+                class="auth-tab"
+                onclick="showSignup()">
 
+                إنشاء حساب
 
-    <!-- =========================
-         النسب
-    ========================= -->
-
-    <div class="indicators">
-
-        <div class="indicator">
-
-            <div class="indicator-title">
-                🏦 نسبة الادخار من الدخل
-            </div>
-
-            <div class="progress">
-                <div
-                    class="progress-bar"
-                    id="savingProgress">
-                </div>
-            </div>
-
-            <div
-                class="percentage"
-                id="savingPercentage">
-                0%
-            </div>
+            </button>
 
         </div>
 
 
-        <div class="indicator">
+        <!-- LOGIN -->
 
-            <div class="indicator-title">
-                📈 نسبة الاستثمار من الدخل
-            </div>
+        <div id="loginForm">
 
-            <div class="progress">
-                <div
-                    class="progress-bar"
-                    id="investmentProgress">
-                </div>
-            </div>
-
-            <div
-                class="percentage"
-                id="investmentPercentage">
-                0%
-            </div>
-
-        </div>
-
-
-        <div class="indicator">
-
-            <div class="indicator-title">
-                💸 نسبة المصروفات من الدخل
-            </div>
-
-            <div class="progress">
-                <div
-                    class="progress-bar"
-                    id="expenseProgress">
-                </div>
-            </div>
-
-            <div
-                class="percentage"
-                id="expensePercentage">
-                0%
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <!-- =========================
-         الحالة المالية
-    ========================= -->
-
-    <div
-        class="financial-status"
-        id="financialStatus">
-
-        أدخل بياناتك لمعرفة وضعك المالي
-
-    </div>
-
-
-    <!-- =========================
-         إضافة عملية
-    ========================= -->
-
-    <div class="form-box">
-
-        <h2 id="formTitle">
-            ➕ إضافة عملية جديدة
-        </h2>
-
-
-        <label>
-            نوع العملية
-        </label>
-
-        <select id="type">
-
-            <option value="income">
-                💰 دخل
-            </option>
-
-            <option value="expense">
-                💸 مصروف
-            </option>
-
-            <option value="saving">
-                🏦 ادخار
-            </option>
-
-            <option value="investment">
-                📈 استثمار
-            </option>
-
-            <option value="debt">
-                💳 سداد دين
-            </option>
-
-        </select>
-
-
-        <label>
-            البند
-        </label>
-
-        <select id="category">
-
-            <option value="مرتب">
-                💼 مرتب
-            </option>
-
-            <option value="بنزين">
-                ⛽ بنزين
-            </option>
-
-            <option value="أكل وشرب">
-                🍔 أكل وشرب
-            </option>
-
-            <option value="فواتير">
-                🧾 فواتير
-            </option>
-
-            <option value="أقساط">
-                💳 أقساط
-            </option>
-
-            <option value="تسوق">
-                🛒 تسوق
-            </option>
-
-            <option value="ترفيه">
-                🎮 ترفيه
-            </option>
-
-            <option value="صحة">
-                🏥 صحة
-            </option>
-
-            <option value="تعليم">
-                📚 تعليم
-            </option>
-
-            <option value="استثمار">
-                📈 استثمار
-            </option>
-
-            <option value="ادخار">
-                🏦 ادخار
-            </option>
-
-            <option value="دين">
-                💳 دين
-            </option>
-
-            <option value="other">
-                ➕ بند آخر
-            </option>
-
-        </select>
-
-
-        <div
-            id="customCategoryBox"
-            style="display:none;">
-
-            <label>
-                اسم البند المخصص
-            </label>
+            <label>البريد الإلكتروني</label>
 
             <input
-                type="text"
-                id="customCategory"
-                placeholder="مثال: صيانة سيارة"
+                type="email"
+                id="loginEmail"
+                placeholder="example@email.com"
             >
+
+
+            <label>كلمة المرور</label>
+
+            <input
+                type="password"
+                id="loginPassword"
+                placeholder="كلمة المرور"
+            >
+
+
+            <button
+                class="full-button"
+                onclick="login()">
+
+                🔐 تسجيل الدخول
+
+            </button>
+
+
+            <br><br>
+
+
+            <button
+                class="secondary full-button"
+                onclick="forgotPassword()">
+
+                نسيت كلمة المرور؟
+
+            </button>
 
         </div>
 
 
-        <label>
-            المبلغ
-        </label>
+        <!-- SIGNUP -->
 
-        <input
-            type="number"
-            id="amount"
-            placeholder="مثال: 3000"
-        >
+        <div id="signupForm" class="hidden">
+
+            <label>البريد الإلكتروني</label>
+
+            <input
+                type="email"
+                id="signupEmail"
+                placeholder="example@email.com"
+            >
 
 
-        <label>
-            التاريخ
-        </label>
+            <label>كلمة المرور</label>
 
-        <input
-            type="date"
-            id="date"
-        >
+            <input
+                type="password"
+                id="signupPassword"
+                placeholder="6 أحرف على الأقل"
+            >
 
+
+            <label>تأكيد كلمة المرور</label>
+
+            <input
+                type="password"
+                id="signupPassword2"
+                placeholder="أعد كتابة كلمة المرور"
+            >
+
+
+            <button
+                class="full-button"
+                onclick="signup()">
+
+                👤 إنشاء الحساب
+
+            </button>
+
+        </div>
+
+
+        <div id="authMessage" class="auth-message"></div>
+
+    </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     MAIN APP
+========================================================= -->
+
+<div id="app" class="hidden">
+
+
+<header>
+
+    <div class="header-inner">
+
+        <div class="brand">
+            💰 Money Follow
+        </div>
+
+        <div class="user-area">
+
+            <span id="userEmail"></span>
+
+            <button
+                class="danger"
+                onclick="logout()">
+
+                خروج
+
+            </button>
+
+        </div>
+
+    </div>
+
+</header>
+
+
+<div class="container">
+
+
+    <!-- TABS -->
+
+    <div class="main-tabs">
 
         <button
-            id="addBtn"
-            class="main-button">
+            class="main-tab active"
+            onclick="switchTab('dashboard', this)">
 
-            ➕ إضافة العملية
+            📊 Dashboard
+
+        </button>
+
+        <button
+            class="main-tab"
+            onclick="switchTab('add', this)">
+
+            ➕ إضافة عملية
+
+        </button>
+
+        <button
+            class="main-tab"
+            onclick="switchTab('transactions', this)">
+
+            📋 العمليات
+
+        </button>
+
+        <button
+            class="main-tab"
+            onclick="switchTab('deleted', this)">
+
+            🗑️ المحذوفات
+
+        </button>
+
+        <button
+            class="main-tab"
+            onclick="switchTab('goals', this)">
+
+            🎯 أهدافي
 
         </button>
 
     </div>
 
 
-    <!-- =========================
-         فلترة
-    ========================= -->
 
-    <div class="filter-box">
+    <!-- =====================================================
+         DASHBOARD
+    ===================================================== -->
 
-        <h2>📅 تحليل شهر معين</h2>
+    <section id="dashboardSection">
 
-        <div class="filter-row">
+        <h2 class="section-title">
+            📊 الوضع المالي
+        </h2>
 
-            <input
-                type="month"
-                id="monthFilter">
 
-            <button id="filterBtn">
-                🔍 عرض الشهر
-            </button>
+        <div class="box">
 
-            <button id="showAllBtn">
-                📋 عرض الكل
-            </button>
+            <h3>📅 تحليل شهر</h3>
+
+            <div class="filter-row">
+
+                <input
+                    type="month"
+                    id="monthFilter"
+                >
+
+                <button
+                    onclick="filterMonth()">
+
+                    🔍 عرض الشهر
+
+                </button>
+
+                <button
+                    class="secondary"
+                    onclick="showAll()">
+
+                    📋 عرض الكل
+
+                </button>
+
+            </div>
 
         </div>
 
-    </div>
 
 
-    <!-- =========================
-         تحليل المصروفات
-    ========================= -->
+        <div class="summary-grid">
 
-    <div class="analysis-box">
+            <div class="card">
+                <div class="card-title">💰 الدخل</div>
+                <div class="card-value" id="income">0 جنيه</div>
+            </div>
 
-        <h2>📊 تحليل المصروفات</h2>
+            <div class="card">
+                <div class="card-title">💸 المصروفات</div>
+                <div class="card-value" id="expenses">0 جنيه</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">🏦 المدخرات</div>
+                <div class="card-value" id="savings">0 جنيه</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📈 الاستثمارات</div>
+                <div class="card-value" id="investments">0 جنيه</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">💳 سداد الديون</div>
+                <div class="card-value" id="debts">0 جنيه</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">💵 المتبقي</div>
+                <div class="card-value" id="remaining">0 جنيه</div>
+            </div>
+
+        </div>
+
+
+
+        <!-- INDICATORS -->
+
+        <div class="indicator-grid">
+
+            <div class="card">
+
+                <b>🏦 نسبة الادخار</b>
+
+                <div class="progress">
+                    <div
+                        class="progress-bar"
+                        id="savingProgress">
+                    </div>
+                </div>
+
+                <div
+                    class="percent"
+                    id="savingPercentage">
+
+                    0%
+
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <b>📈 نسبة الاستثمار</b>
+
+                <div class="progress">
+                    <div
+                        class="progress-bar"
+                        id="investmentProgress">
+                    </div>
+                </div>
+
+                <div
+                    class="percent"
+                    id="investmentPercentage">
+
+                    0%
+
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <b>💸 نسبة المصروفات</b>
+
+                <div class="progress">
+                    <div
+                        class="progress-bar"
+                        id="expenseProgress">
+                    </div>
+                </div>
+
+                <div
+                    class="percent"
+                    id="expensePercentage">
+
+                    0%
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <div
+            class="box"
+            id="financialStatus">
+
+            أدخل بياناتك لمتابعة وضعك المالي.
+
+        </div>
+
+
+
+        <!-- ANALYSIS -->
 
         <div class="analysis-grid">
 
-            <div class="analysis-card">
+            <div class="box">
 
                 <h3>
                     🏆 أكثر بند صرفت عليه
@@ -664,7 +963,7 @@
             </div>
 
 
-            <div class="analysis-card">
+            <div class="box">
 
                 <h3>
                     💸 المصروفات حسب البنود
@@ -672,7 +971,7 @@
 
                 <div id="categoryAnalysis">
 
-                    لا توجد مصروفات
+                    لا توجد مصروفات.
 
                 </div>
 
@@ -680,27 +979,17 @@
 
         </div>
 
-    </div>
-
-
-    <!-- =========================
-         تحليل الديون
-    ========================= -->
-
-    <div class="analysis-box">
-
-        <h2>💳 تحليل الديون</h2>
 
         <div class="analysis-grid">
 
-            <div class="analysis-card">
+            <div class="box">
 
                 <h3>
-                    إجمالي سداد الديون
+                    💳 الديون
                 </h3>
 
                 <div
-                    class="amount"
+                    class="card-value"
                     id="debtAnalysis">
 
                     0 جنيه
@@ -709,14 +998,15 @@
 
             </div>
 
-            <div class="analysis-card">
+
+            <div class="box">
 
                 <h3>
-                    المتبقي بعد الديون
+                    💵 المتبقي بعد كل الالتزامات
                 </h3>
 
                 <div
-                    class="amount"
+                    class="card-value"
                     id="afterDebt">
 
                     0 جنيه
@@ -727,1041 +1017,2567 @@
 
         </div>
 
-    </div>
+    </section>
 
 
-    <!-- =========================
-         سجل العمليات
-    ========================= -->
 
-    <div class="table-box">
+    <!-- =====================================================
+         ADD / EDIT
+    ===================================================== -->
 
-        <h2>📋 سجل العمليات</h2>
+    <section
+        id="addSection"
+        class="hidden">
 
-        <div class="table-wrapper">
+        <div class="box">
 
-            <table>
+            <h2 id="formTitle">
+                ➕ إضافة عملية جديدة
+            </h2>
 
-                <thead>
 
-                    <tr>
+            <div class="form-grid">
 
-                        <th>التاريخ</th>
 
-                        <th>النوع</th>
+                <div>
 
-                        <th>البند</th>
+                    <label>
+                        نوع العملية
+                    </label>
 
-                        <th>المبلغ</th>
+                    <select id="type">
 
-                        <th>الإجراءات</th>
+                        <option value="income">
+                            💰 دخل
+                        </option>
 
-                    </tr>
+                        <option value="expense">
+                            💸 مصروف
+                        </option>
 
-                </thead>
+                        <option value="saving">
+                            🏦 ادخار
+                        </option>
 
-                <tbody id="transactions">
+                        <option value="investment">
+                            📈 استثمار
+                        </option>
 
-                </tbody>
+                        <option value="debt">
+                            💳 سداد دين
+                        </option>
 
-            </table>
+                    </select>
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        البند
+                    </label>
+
+                    <select id="category">
+
+                        <option value="مرتب">
+                            💼 مرتب
+                        </option>
+
+                        <option value="دخل إضافي">
+                            💵 دخل إضافي
+                        </option>
+
+                        <option value="بنزين">
+                            ⛽ بنزين
+                        </option>
+
+                        <option value="أكل وشرب">
+                            🍔 أكل وشرب
+                        </option>
+
+                        <option value="فواتير">
+                            🧾 فواتير
+                        </option>
+
+                        <option value="أقساط">
+                            💳 أقساط
+                        </option>
+
+                        <option value="تسوق">
+                            🛒 تسوق
+                        </option>
+
+                        <option value="ترفيه">
+                            🎮 ترفيه
+                        </option>
+
+                        <option value="صحة">
+                            🏥 صحة
+                        </option>
+
+                        <option value="تعليم">
+                            📚 تعليم
+                        </option>
+
+                        <option value="صيانة سيارة">
+                            🚗 صيانة سيارة
+                        </option>
+
+                        <option value="منزل">
+                            🏠 منزل
+                        </option>
+
+                        <option value="استثمار">
+                            📈 استثمار
+                        </option>
+
+                        <option value="ادخار">
+                            🏦 ادخار
+                        </option>
+
+                        <option value="دين">
+                            💳 دين
+                        </option>
+
+                        <option value="other">
+                            ➕ بند آخر
+                        </option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+
+            <div
+                id="customCategoryBox"
+                class="hidden">
+
+                <label>
+                    اسم البند المخصص
+                </label>
+
+                <input
+                    type="text"
+                    id="customCategory"
+                    placeholder="مثال: صيانة غسالة، هدية، سفر..."
+                >
+
+            </div>
+
+
+            <div class="form-grid">
+
+                <div>
+
+                    <label>
+                        المبلغ
+                    </label>
+
+                    <input
+                        type="number"
+                        id="amount"
+                        min="0.01"
+                        step="0.01"
+                        placeholder="مثال: 1500"
+                    >
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        التاريخ
+                    </label>
+
+                    <input
+                        type="date"
+                        id="date"
+                    >
+
+                </div>
+
+            </div>
+
+
+            <button
+                id="saveTransactionBtn"
+                class="full-button"
+                onclick="saveTransaction()">
+
+                ➕ إضافة العملية
+
+            </button>
+
+
+            <br><br>
+
+
+            <button
+                id="cancelEditBtn"
+                class="secondary full-button hidden"
+                onclick="cancelEdit()">
+
+                إلغاء التعديل
+
+            </button>
 
         </div>
 
-    </div>
+    </section>
 
 
-    <script>
+
+    <!-- =====================================================
+         TRANSACTIONS
+    ===================================================== -->
+
+    <section
+        id="transactionsSection"
+        class="hidden">
+
+        <div class="box">
+
+            <h2>
+                📋 سجل العمليات
+            </h2>
 
 
-        /* =========================
-           تحميل البيانات
-        ========================= */
+            <div class="table-wrapper">
 
-        let data =
-            JSON.parse(
-                localStorage.getItem("myMoneyData")
-            ) || [];
+                <table>
 
+                    <thead>
 
-        let editingIndex = -1;
+                        <tr>
 
-        let currentMonth = null;
+                            <th>التاريخ</th>
 
+                            <th>النوع</th>
 
-        /* =========================
-           عناصر الصفحة
-        ========================= */
+                            <th>البند</th>
 
-        const type =
-            document.getElementById("type");
+                            <th>المبلغ</th>
 
-        const category =
-            document.getElementById("category");
+                            <th>الإجراءات</th>
 
-        const customCategoryBox =
-            document.getElementById(
-                "customCategoryBox"
-            );
+                        </tr>
 
-        const customCategory =
-            document.getElementById(
-                "customCategory"
-            );
+                    </thead>
 
-        const amount =
-            document.getElementById("amount");
+                    <tbody id="transactionsTable">
 
-        const date =
-            document.getElementById("date");
+                    </tbody>
 
-        const addBtn =
-            document.getElementById("addBtn");
+                </table>
+
+            </div>
+
+        </div>
+
+    </section>
 
 
-        /* =========================
-           البند المخصص
-        ========================= */
 
-        category.addEventListener(
-            "change",
-            function () {
+    <!-- =====================================================
+         DELETED
+    ===================================================== -->
 
-                if (category.value === "other") {
+    <section
+        id="deletedSection"
+        class="hidden">
 
-                    customCategoryBox.style.display =
-                        "block";
+        <div class="box">
 
-                } else {
+            <h2>
+                🗑️ المحذوفات
+            </h2>
 
-                    customCategoryBox.style.display =
-                        "none";
+            <p style="color:#777;">
+                العمليات هنا لا تزال محفوظة في قاعدة البيانات،
+                ويمكنك استرجاعها.
+            </p>
 
-                    customCategory.value = "";
 
-                }
+            <div class="table-wrapper">
 
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>التاريخ</th>
+
+                            <th>النوع</th>
+
+                            <th>البند</th>
+
+                            <th>المبلغ</th>
+
+                            <th>الإجراءات</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="deletedTable">
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         GOALS
+    ===================================================== -->
+
+    <section
+        id="goalsSection"
+        class="hidden">
+
+        <div class="box">
+
+            <h2>
+                🎯 أهدافي المالية
+            </h2>
+
+
+            <div class="form-grid">
+
+                <div>
+
+                    <label>
+                        اسم الهدف
+                    </label>
+
+                    <input
+                        id="goalName"
+                        placeholder="مثال: صندوق الطوارئ"
+                    >
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        المبلغ المستهدف
+                    </label>
+
+                    <input
+                        id="goalTarget"
+                        type="number"
+                        min="1"
+                        placeholder="100000"
+                    >
+
+                </div>
+
+            </div>
+
+
+            <button
+                onclick="addGoal()"
+                class="full-button">
+
+                🎯 إضافة الهدف
+
+            </button>
+
+        </div>
+
+
+        <div
+            class="box"
+            id="goalsList">
+
+            لا توجد أهداف حتى الآن.
+
+        </div>
+
+    </section>
+
+
+</div>
+
+</div>
+
+
+<!-- LOADING -->
+
+<div id="loading">
+    جاري التحميل...
+</div>
+
+
+<!-- TOAST -->
+
+<div id="toast"></div>
+
+
+
+<script>
+
+/* =========================================================
+   SUPABASE CONFIG
+========================================================= */
+
+const SUPABASE_URL =
+    "https://jqgpgcygrfefnpeqngqz.supabase.co";
+
+const SUPABASE_KEY =
+    "sb_publishable__YQNyYoOJungYa0jvXRvsQ_HowjpXvy";
+
+
+const supabaseClient =
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
+
+
+/* =========================================================
+   VARIABLES
+========================================================= */
+
+let currentUser = null;
+
+let transactions = [];
+
+let currentMonth = null;
+
+let editingId = null;
+
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function showLoading(show) {
+
+    document.getElementById("loading").style.display =
+        show ? "flex" : "none";
+
+}
+
+
+function toast(message, type = "normal") {
+
+    const box =
+        document.getElementById("toast");
+
+    box.textContent = message;
+
+    box.style.display = "block";
+
+    if (type === "error") {
+        box.style.background = "#a00000";
+    } else if (type === "success") {
+        box.style.background = "#176b35";
+    } else {
+        box.style.background = "#222";
+    }
+
+    setTimeout(function() {
+        box.style.display = "none";
+    }, 3000);
+
+}
+
+
+function formatMoney(number) {
+
+    return Number(number || 0).toLocaleString(
+        "ar-EG",
+        {
+            maximumFractionDigits: 2
+        }
+    ) + " جنيه";
+
+}
+
+
+function todayDate() {
+
+    const d = new Date();
+
+    const year =
+        d.getFullYear();
+
+    const month =
+        String(d.getMonth() + 1).padStart(2, "0");
+
+    const day =
+        String(d.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+
+}
+
+
+/* =========================================================
+   AUTH TABS
+========================================================= */
+
+function showLogin() {
+
+    document
+        .getElementById("loginForm")
+        .classList.remove("hidden");
+
+    document
+        .getElementById("signupForm")
+        .classList.add("hidden");
+
+
+    document
+        .getElementById("loginTab")
+        .classList.add("active");
+
+    document
+        .getElementById("signupTab")
+        .classList.remove("active");
+
+}
+
+
+function showSignup() {
+
+    document
+        .getElementById("loginForm")
+        .classList.add("hidden");
+
+    document
+        .getElementById("signupForm")
+        .classList.remove("hidden");
+
+
+    document
+        .getElementById("signupTab")
+        .classList.add("active");
+
+    document
+        .getElementById("loginTab")
+        .classList.remove("active");
+
+}
+
+
+function authMessage(message, type) {
+
+    const box =
+        document.getElementById("authMessage");
+
+    box.textContent = message;
+
+    box.className =
+        "auth-message " + type;
+
+}
+
+
+/* =========================================================
+   SIGN UP
+========================================================= */
+
+async function signup() {
+
+    const email =
+        document.getElementById("signupEmail")
+            .value
+            .trim();
+
+    const password =
+        document.getElementById("signupPassword")
+            .value;
+
+    const password2 =
+        document.getElementById("signupPassword2")
+            .value;
+
+
+    if (!email || !password) {
+
+        authMessage(
+            "اكتب البريد الإلكتروني وكلمة المرور.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    if (password.length < 6) {
+
+        authMessage(
+            "كلمة المرور لازم تكون 6 أحرف على الأقل.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    if (password !== password2) {
+
+        authMessage(
+            "كلمتا المرور غير متطابقتين.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    showLoading(true);
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient.auth.signUp({
+
+            email: email,
+
+            password: password
+
+        });
+
+
+    showLoading(false);
+
+
+    if (error) {
+
+        authMessage(
+            error.message,
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    authMessage(
+        "تم إنشاء الحساب. راجع بريدك الإلكتروني لتأكيد الحساب ثم سجل الدخول.",
+        "success"
+    );
+
+}
+
+
+/* =========================================================
+   LOGIN
+========================================================= */
+
+async function login() {
+
+    const email =
+        document.getElementById("loginEmail")
+            .value
+            .trim();
+
+    const password =
+        document.getElementById("loginPassword")
+            .value;
+
+
+    if (!email || !password) {
+
+        authMessage(
+            "اكتب البريد وكلمة المرور.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    showLoading(true);
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient.auth.signInWithPassword({
+
+            email: email,
+
+            password: password
+
+        });
+
+
+    showLoading(false);
+
+
+    if (error) {
+
+        authMessage(
+            error.message,
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    authMessage(
+        "تم تسجيل الدخول ✅",
+        "success"
+    );
+
+
+    await initializeApp();
+
+}
+
+
+/* =========================================================
+   FORGOT PASSWORD
+========================================================= */
+
+async function forgotPassword() {
+
+    const email =
+        document.getElementById("loginEmail")
+            .value
+            .trim();
+
+
+    if (!email) {
+
+        authMessage(
+            "اكتب البريد الإلكتروني أولاً.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    showLoading(true);
+
+
+    const {
+        error
+    } =
+        await supabaseClient.auth.resetPasswordForEmail(
+            email,
+            {
+                redirectTo:
+                    window.location.href
             }
         );
 
 
-        /* =========================
-           إضافة / تعديل
-        ========================= */
-
-        addBtn.addEventListener(
-            "click",
-            function () {
-
-                let selectedCategory =
-                    category.value;
+    showLoading(false);
 
 
-                if (
-                    selectedCategory === "other"
-                ) {
+    if (error) {
 
-                    selectedCategory =
-                        customCategory.value.trim();
-
-
-                    if (
-                        selectedCategory === ""
-                    ) {
-
-                        alert(
-                            "اكتب اسم البند"
-                        );
-
-                        return;
-
-                    }
-
-                }
-
-
-                let amountValue =
-                    Number(amount.value);
-
-
-                let dateValue =
-                    date.value;
-
-
-                if (amountValue <= 0) {
-
-                    alert(
-                        "اكتب مبلغ صحيح"
-                    );
-
-                    return;
-
-                }
-
-
-                if (dateValue === "") {
-
-                    alert(
-                        "اختار التاريخ"
-                    );
-
-                    return;
-
-                }
-
-
-                const transaction = {
-
-                    type: type.value,
-
-                    category:
-                        selectedCategory,
-
-                    amount:
-                        amountValue,
-
-                    date:
-                        dateValue
-
-                };
-
-
-                if (editingIndex !== -1) {
-
-                    data[editingIndex] =
-                        transaction;
-
-                    editingIndex = -1;
-
-                    addBtn.textContent =
-                        "➕ إضافة العملية";
-
-                    document
-                        .getElementById(
-                            "formTitle"
-                        )
-                        .textContent =
-                        "➕ إضافة عملية جديدة";
-
-                }
-
-                else {
-
-                    data.push(transaction);
-
-                }
-
-
-                saveData();
-
-                showData();
-
-                clearForm();
-
-                alert(
-                    "تم حفظ العملية ✅"
-                );
-
-            }
+        authMessage(
+            error.message,
+            "error"
         );
 
+        return;
 
-        /* =========================
-           حفظ البيانات
-        ========================= */
+    }
 
-        function saveData() {
 
-            localStorage.setItem(
-                "myMoneyData",
-                JSON.stringify(data)
-            );
+    authMessage(
+        "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك.",
+        "success"
+    );
 
-        }
+}
 
 
-        /* =========================
-           تنظيف النموذج
-        ========================= */
+/* =========================================================
+   LOGOUT
+========================================================= */
 
-        function clearForm() {
+async function logout() {
 
-            amount.value = "";
+    await supabaseClient.auth.signOut();
 
-            date.value = "";
+    currentUser = null;
 
-            customCategory.value = "";
+    transactions = [];
 
-            category.value = "مرتب";
+    document
+        .getElementById("app")
+        .classList.add("hidden");
 
-            customCategoryBox.style.display =
-                "none";
+    document
+        .getElementById("authScreen")
+        .classList.remove("hidden");
 
-        }
+}
 
 
-        /* =========================
-           اسم نوع العملية
-        ========================= */
+/* =========================================================
+   INITIALIZE
+========================================================= */
 
-        function getTypeName(value) {
+async function initializeApp() {
 
-            if (value === "income")
-                return "دخل";
+    const {
+        data
+    } =
+        await supabaseClient.auth.getUser();
 
-            if (value === "expense")
-                return "مصروف";
 
-            if (value === "saving")
-                return "ادخار";
+    if (!data.user) {
 
-            if (value === "investment")
-                return "استثمار";
+        return;
 
-            if (value === "debt")
-                return "سداد دين";
+    }
 
-            return "";
 
-        }
+    currentUser =
+        data.user;
 
 
-        /* =========================
-           عرض البيانات
-        ========================= */
+    document
+        .getElementById("authScreen")
+        .classList.add("hidden");
 
-        function showData() {
 
-            const table =
-                document.getElementById(
-                    "transactions"
-                );
+    document
+        .getElementById("app")
+        .classList.remove("hidden");
 
 
-            table.innerHTML = "";
+    document
+        .getElementById("userEmail")
+        .textContent =
+        currentUser.email;
 
 
-            let filteredData =
-                data.map(
-                    function(item, index) {
+    document
+        .getElementById("date")
+        .value =
+        todayDate();
 
-                        return {
-                            item: item,
-                            index: index
-                        };
 
-                    }
-                );
+    await loadTransactions();
 
+    loadGoals();
 
-            if (currentMonth !== null) {
+}
 
-                filteredData =
-                    filteredData.filter(
-                        function(record) {
 
-                            return record.item.date
-                                .startsWith(
-                                    currentMonth
-                                );
+/* =========================================================
+   LOAD TRANSACTIONS
+========================================================= */
 
-                        }
-                    );
+async function loadTransactions() {
 
-            }
+    showLoading(true);
 
 
-            filteredData.forEach(
-                function(record) {
-
-                    const item =
-                        record.item;
-
-                    const index =
-                        record.index;
-
-
-                    const row =
-                        document.createElement(
-                            "tr"
-                        );
-
-
-                    row.innerHTML = `
-
-                        <td>
-                            ${item.date}
-                        </td>
-
-                        <td>
-                            ${getTypeName(item.type)}
-                        </td>
-
-                        <td>
-                            ${item.category}
-                        </td>
-
-                        <td>
-                            ${item.amount.toLocaleString("ar-EG")}
-                            جنيه
-                        </td>
-
-                        <td>
-
-                            <button
-                                class="edit-button"
-                                onclick="editTransaction(${index})">
-
-                                ✏️ تعديل
-
-                            </button>
-
-                            <button
-                                class="delete-button"
-                                onclick="deleteTransaction(${index})">
-
-                                🗑️ حذف
-
-                            </button>
-
-                        </td>
-
-                    `;
-
-
-                    table.appendChild(row);
-
-                }
-            );
-
-
-            updateDashboard(
-                filteredData
-            );
-
-        }
-
-
-        /* =========================
-           Dashboard
-        ========================= */
-
-        function updateDashboard(records) {
-
-            let income = 0;
-
-            let expenses = 0;
-
-            let savings = 0;
-
-            let investments = 0;
-
-            let debts = 0;
-
-
-            let categories = {};
-
-
-            records.forEach(
-                function(record) {
-
-                    const item =
-                        record.item;
-
-
-                    if (
-                        item.type === "income"
-                    ) {
-
-                        income += item.amount;
-
-                    }
-
-                    else if (
-                        item.type === "expense"
-                    ) {
-
-                        expenses += item.amount;
-
-
-                        if (
-                            !categories[
-                                item.category
-                            ]
-                        ) {
-
-                            categories[
-                                item.category
-                            ] = 0;
-
-                        }
-
-
-                        categories[
-                            item.category
-                        ] += item.amount;
-
-                    }
-
-                    else if (
-                        item.type === "saving"
-                    ) {
-
-                        savings += item.amount;
-
-                    }
-
-                    else if (
-                        item.type === "investment"
-                    ) {
-
-                        investments +=
-                            item.amount;
-
-                    }
-
-                    else if (
-                        item.type === "debt"
-                    ) {
-
-                        debts += item.amount;
-
-                    }
-
-                }
-            );
-
-
-            const remaining =
-                income -
-                expenses -
-                savings -
-                investments -
-                debts;
-
-
-            /* ===== الأرقام ===== */
-
-            document.getElementById(
-                "income"
-            ).textContent =
-                income.toLocaleString("ar-EG")
-                + " جنيه";
-
-
-            document.getElementById(
-                "expenses"
-            ).textContent =
-                expenses.toLocaleString("ar-EG")
-                + " جنيه";
-
-
-            document.getElementById(
-                "savings"
-            ).textContent =
-                savings.toLocaleString("ar-EG")
-                + " جنيه";
-
-
-            document.getElementById(
-                "investments"
-            ).textContent =
-                investments.toLocaleString("ar-EG")
-                + " جنيه";
-
-
-            document.getElementById(
-                "debts"
-            ).textContent =
-                debts.toLocaleString("ar-EG")
-                + " جنيه";
-
-
-            document.getElementById(
-                "remaining"
-            ).textContent =
-                remaining.toLocaleString("ar-EG")
-                + " جنيه";
-
-
-            /* =========================
-               النسب
-            ========================= */
-
-            let savingPercent = 0;
-
-            let investmentPercent = 0;
-
-            let expensePercent = 0;
-
-
-            if (income > 0) {
-
-                savingPercent =
-                    (savings / income) * 100;
-
-                investmentPercent =
-                    (investments / income) * 100;
-
-                expensePercent =
-                    (expenses / income) * 100;
-
-            }
-
-
-            document.getElementById(
-                "savingPercentage"
-            ).textContent =
-                savingPercent.toFixed(1) + "%";
-
-
-            document.getElementById(
-                "investmentPercentage"
-            ).textContent =
-                investmentPercent.toFixed(1) + "%";
-
-
-            document.getElementById(
-                "expensePercentage"
-            ).textContent =
-                expensePercent.toFixed(1) + "%";
-
-
-            document.getElementById(
-                "savingProgress"
-            ).style.width =
-                Math.min(
-                    savingPercent,
-                    100
-                ) + "%";
-
-
-            document.getElementById(
-                "investmentProgress"
-            ).style.width =
-                Math.min(
-                    investmentPercent,
-                    100
-                ) + "%";
-
-
-            document.getElementById(
-                "expenseProgress"
-            ).style.width =
-                Math.min(
-                    expensePercent,
-                    100
-                ) + "%";
-
-
-            /* =========================
-               الحالة المالية
-            ========================= */
-
-            let status = "";
-
-
-            if (income === 0) {
-
-                status =
-                    "أضف دخلك وعملياتك لمعرفة وضعك المالي.";
-
-            }
-
-            else if (remaining < 0) {
-
-                status =
-                    "⚠️ مصروفاتك والتزاماتك أكبر من دخلك.";
-
-            }
-
-            else if (
-                savings + investments >=
-                income * 0.20
-            ) {
-
-                status =
-                    "🔥 ممتاز! أنت تخصص 20% أو أكثر من دخلك للادخار والاستثمار.";
-
-            }
-
-            else if (
-                savings + investments > 0
-            ) {
-
-                status =
-                    "👍 جيد، لديك ادخار واستثمار. حاول زيادة النسبة تدريجيًا.";
-
-            }
-
-            else {
-
-                status =
-                    "💡 حاول تخصيص جزء ثابت من دخلك للادخار أو الاستثمار.";
-
-            }
-
-
-            document.getElementById(
-                "financialStatus"
-            ).textContent =
-                status;
-
-
-            /* =========================
-               تحليل الديون
-            ========================= */
-
-            document.getElementById(
-                "debtAnalysis"
-            ).textContent =
-                debts.toLocaleString("ar-EG")
-                + " جنيه";
-
-
-            const afterDebt =
-                income -
-                expenses -
-                savings -
-                investments -
-                debts;
-
-
-            document.getElementById(
-                "afterDebt"
-            ).textContent =
-                afterDebt.toLocaleString("ar-EG")
-                + " جنيه";
-
-
-            /* =========================
-               أكثر بند
-            ========================= */
-
-            const categoryEntries =
-                Object.entries(categories);
-
-
-            categoryEntries.sort(
-                function(a, b) {
-
-                    return b[1] - a[1];
-
-                }
-            );
-
-
-            const topCategory =
-                document.getElementById(
-                    "topCategory"
-                );
-
-
-            if (
-                categoryEntries.length === 0
-            ) {
-
-                topCategory.textContent =
-                    "لا توجد مصروفات";
-
-            }
-
-            else {
-
-                topCategory.innerHTML = `
-
-                    🏆 ${categoryEntries[0][0]}
-
-                    <br>
-
-                    <small>
-                        ${categoryEntries[0][1].toLocaleString("ar-EG")}
-                        جنيه
-                    </small>
-
-                `;
-
-            }
-
-
-            /* =========================
-               تحليل البنود
-            ========================= */
-
-            const categoryAnalysis =
-                document.getElementById(
-                    "categoryAnalysis"
-                );
-
-
-            categoryAnalysis.innerHTML = "";
-
-
-            if (
-                categoryEntries.length === 0
-            ) {
-
-                categoryAnalysis.textContent =
-                    "لا توجد مصروفات";
-
-            }
-
-            else {
-
-                categoryEntries.forEach(
-                    function(entry) {
-
-                        const name =
-                            entry[0];
-
-                        const value =
-                            entry[1];
-
-
-                        const percentage =
-                            expenses > 0
-                                ? (value / expenses) * 100
-                                : 0;
-
-
-                        const div =
-                            document.createElement(
-                                "div"
-                            );
-
-
-                        div.className =
-                            "category-row";
-
-
-                        div.innerHTML = `
-
-                            <div class="category-info">
-
-                                <span>
-                                    ${name}
-                                </span>
-
-                                <span>
-                                    ${value.toLocaleString("ar-EG")}
-                                    جنيه
-                                    (${percentage.toFixed(1)}%)
-                                </span>
-
-                            </div>
-
-                            <div class="category-bar">
-
-                                <div
-                                    class="category-fill"
-                                    style="width:${percentage}%">
-                                </div>
-
-                            </div>
-
-                        `;
-
-
-                        categoryAnalysis.appendChild(
-                            div
-                        );
-
-                    }
-                );
-
-            }
-
-        }
-
-
-        /* =========================
-           تعديل
-        ========================= */
-
-        function editTransaction(index) {
-
-            const item =
-                data[index];
-
-
-            type.value =
-                item.type;
-
-
-            amount.value =
-                item.amount;
-
-
-            date.value =
-                item.date;
-
-
-            const exists =
-                Array.from(
-                    category.options
-                ).some(
-                    function(option) {
-
-                        return option.value ===
-                            item.category;
-
-                    }
-                );
-
-
-            if (exists) {
-
-                category.value =
-                    item.category;
-
-                customCategoryBox.style.display =
-                    "none";
-
-            }
-
-            else {
-
-                category.value =
-                    "other";
-
-                customCategoryBox.style.display =
-                    "block";
-
-                customCategory.value =
-                    item.category;
-
-            }
-
-
-            editingIndex =
-                index;
-
-
-            addBtn.textContent =
-                "💾 حفظ التعديل";
-
-
-            document.getElementById(
-                "formTitle"
-            ).textContent =
-                "✏️ تعديل العملية";
-
-
-            window.scrollTo({
-                top: 0,
-                behavior: "smooth"
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from("transactions")
+            .select("*")
+            .eq("user_id", currentUser.id)
+            .order("transaction_date", {
+                ascending: false
+            })
+            .order("created_at", {
+                ascending: false
             });
 
+
+    showLoading(false);
+
+
+    if (error) {
+
+        toast(
+            "خطأ في تحميل العمليات: " +
+            error.message,
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    transactions =
+        data || [];
+
+
+    renderAll();
+
+}
+
+
+/* =========================================================
+   SAVE TRANSACTION
+========================================================= */
+
+async function saveTransaction() {
+
+    const type =
+        document.getElementById("type")
+            .value;
+
+
+    const categorySelect =
+        document.getElementById("category");
+
+
+    let category =
+        categorySelect.value;
+
+
+    if (category === "other") {
+
+        category =
+            document
+                .getElementById("customCategory")
+                .value
+                .trim();
+
+
+        if (!category) {
+
+            toast(
+                "اكتب اسم البند المخصص.",
+                "error"
+            );
+
+            return;
+
+        }
+
+    }
+
+
+    const amount =
+        Number(
+            document
+                .getElementById("amount")
+                .value
+        );
+
+
+    const date =
+        document
+            .getElementById("date")
+            .value;
+
+
+    if (!amount || amount <= 0) {
+
+        toast(
+            "اكتب مبلغ صحيح.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    if (!date) {
+
+        toast(
+            "اختار التاريخ.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    const transactionData = {
+
+        type: type,
+
+        category: category,
+
+        amount: amount,
+
+        transaction_date: date
+
+    };
+
+
+    showLoading(true);
+
+
+    let result;
+
+
+    if (editingId) {
+
+        result =
+            await supabaseClient
+                .from("transactions")
+                .update(transactionData)
+                .eq("id", editingId)
+                .eq("user_id", currentUser.id)
+                .select();
+
+    } else {
+
+        result =
+            await supabaseClient
+                .from("transactions")
+                .insert({
+
+                    ...transactionData,
+
+                    user_id:
+                        currentUser.id,
+
+                    is_deleted:
+                        false
+
+                })
+                .select();
+
+    }
+
+
+    showLoading(false);
+
+
+    if (result.error) {
+
+        toast(
+            "حدث خطأ: " +
+            result.error.message,
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    toast(
+        editingId
+            ? "تم تعديل العملية ✅"
+            : "تم حفظ العملية Online ☁️",
+        "success"
+    );
+
+
+    cancelEdit();
+
+    await loadTransactions();
+
+    switchTabByName("transactions");
+
+}
+
+
+/* =========================================================
+   EDIT
+========================================================= */
+
+function editTransaction(id) {
+
+    const item =
+        transactions.find(
+            x => x.id === id
+        );
+
+
+    if (!item) return;
+
+
+    editingId =
+        id;
+
+
+    document
+        .getElementById("type")
+        .value =
+        item.type;
+
+
+    const category =
+        document.getElementById("category");
+
+
+    const exists =
+        Array.from(
+            category.options
+        ).some(
+            option =>
+                option.value === item.category
+        );
+
+
+    if (exists) {
+
+        category.value =
+            item.category;
+
+        document
+            .getElementById("customCategoryBox")
+            .classList.add("hidden");
+
+    } else {
+
+        category.value =
+            "other";
+
+        document
+            .getElementById("customCategory")
+            .value =
+            item.category;
+
+        document
+            .getElementById("customCategoryBox")
+            .classList.remove("hidden");
+
+    }
+
+
+    document
+        .getElementById("amount")
+        .value =
+        item.amount;
+
+
+    document
+        .getElementById("date")
+        .value =
+        item.transaction_date;
+
+
+    document
+        .getElementById("formTitle")
+        .textContent =
+        "✏️ تعديل العملية";
+
+
+    document
+        .getElementById("saveTransactionBtn")
+        .textContent =
+        "💾 حفظ التعديل";
+
+
+    document
+        .getElementById("cancelEditBtn")
+        .classList.remove("hidden");
+
+
+    switchTabByName("add");
+
+}
+
+
+/* =========================================================
+   CANCEL EDIT
+========================================================= */
+
+function cancelEdit() {
+
+    editingId = null;
+
+
+    document
+        .getElementById("formTitle")
+        .textContent =
+        "➕ إضافة عملية جديدة";
+
+
+    document
+        .getElementById("saveTransactionBtn")
+        .textContent =
+        "➕ إضافة العملية";
+
+
+    document
+        .getElementById("cancelEditBtn")
+        .classList.add("hidden");
+
+
+    document
+        .getElementById("amount")
+        .value = "";
+
+
+    document
+        .getElementById("date")
+        .value =
+        todayDate();
+
+
+    document
+        .getElementById("category")
+        .value =
+        "مرتب";
+
+
+    document
+        .getElementById("customCategory")
+        .value = "";
+
+
+    document
+        .getElementById("customCategoryBox")
+        .classList.add("hidden");
+
+}
+
+
+/* =========================================================
+   SOFT DELETE
+========================================================= */
+
+async function deleteTransaction(id) {
+
+    const confirmed =
+        confirm(
+            "هل أنت متأكد من نقل العملية إلى المحذوفات؟"
+        );
+
+
+    if (!confirmed) return;
+
+
+    showLoading(true);
+
+
+    const {
+        error
+    } =
+        await supabaseClient
+            .from("transactions")
+            .update({
+                is_deleted: true
+            })
+            .eq("id", id)
+            .eq("user_id", currentUser.id);
+
+
+    showLoading(false);
+
+
+    if (error) {
+
+        toast(
+            "تعذر حذف العملية: " +
+            error.message,
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    toast(
+        "تم نقل العملية إلى المحذوفات 🗑️",
+        "success"
+    );
+
+
+    await loadTransactions();
+
+}
+
+
+/* =========================================================
+   RESTORE
+========================================================= */
+
+async function restoreTransaction(id) {
+
+    showLoading(true);
+
+
+    const {
+        error
+    } =
+        await supabaseClient
+            .from("transactions")
+            .update({
+                is_deleted: false
+            })
+            .eq("id", id)
+            .eq("user_id", currentUser.id);
+
+
+    showLoading(false);
+
+
+    if (error) {
+
+        toast(
+            "تعذر استرجاع العملية.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    toast(
+        "تم استرجاع العملية ↩️",
+        "success"
+    );
+
+
+    await loadTransactions();
+
+}
+
+
+/* =========================================================
+   PERMANENT DELETE
+========================================================= */
+
+async function permanentDelete(id) {
+
+    const confirmed =
+        confirm(
+            "⚠️ سيتم حذف العملية نهائيًا من قاعدة البيانات. هل أنت متأكد؟"
+        );
+
+
+    if (!confirmed) return;
+
+
+    showLoading(true);
+
+
+    const {
+        error
+    } =
+        await supabaseClient
+            .from("transactions")
+            .delete()
+            .eq("id", id)
+            .eq("user_id", currentUser.id);
+
+
+    showLoading(false);
+
+
+    if (error) {
+
+        toast(
+            "تعذر الحذف النهائي.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    toast(
+        "تم الحذف النهائي.",
+        "success"
+    );
+
+
+    await loadTransactions();
+
+}
+
+
+/* =========================================================
+   TYPE NAME
+========================================================= */
+
+function typeName(type) {
+
+    const names = {
+
+        income: "💰 دخل",
+
+        expense: "💸 مصروف",
+
+        saving: "🏦 ادخار",
+
+        investment: "📈 استثمار",
+
+        debt: "💳 سداد دين"
+
+    };
+
+
+    return names[type] || type;
+
+}
+
+
+function typeClass(type) {
+
+    return "type-" + type;
+
+}
+
+
+/* =========================================================
+   FILTERED DATA
+========================================================= */
+
+function getActiveTransactions() {
+
+    let result =
+        transactions.filter(
+            item =>
+                item.is_deleted === false
+        );
+
+
+    if (currentMonth) {
+
+        result =
+            result.filter(
+                item =>
+                    item.transaction_date
+                        .startsWith(currentMonth)
+            );
+
+    }
+
+
+    return result;
+
+}
+
+
+/* =========================================================
+   RENDER ALL
+========================================================= */
+
+function renderAll() {
+
+    renderTransactions();
+
+    renderDeleted();
+
+    updateDashboard();
+
+    renderGoals();
+
+}
+
+
+/* =========================================================
+   RENDER TRANSACTIONS
+========================================================= */
+
+function renderTransactions() {
+
+    const table =
+        document.getElementById(
+            "transactionsTable"
+        );
+
+
+    table.innerHTML = "";
+
+
+    const active =
+        getActiveTransactions();
+
+
+    if (active.length === 0) {
+
+        table.innerHTML = `
+
+            <tr>
+
+                <td colspan="5">
+                    لا توجد عمليات.
+                </td>
+
+            </tr>
+
+        `;
+
+        return;
+
+    }
+
+
+    active.forEach(function(item) {
+
+        const row =
+            document.createElement("tr");
+
+
+        row.innerHTML = `
+
+            <td>
+                ${item.transaction_date}
+            </td>
+
+            <td class="${typeClass(item.type)}">
+                ${typeName(item.type)}
+            </td>
+
+            <td>
+                ${escapeHTML(item.category)}
+            </td>
+
+            <td>
+                ${formatMoney(item.amount)}
+            </td>
+
+            <td>
+
+                <div class="action-buttons">
+
+                    <button
+                        class="secondary"
+                        onclick="editTransaction('${item.id}')">
+
+                        ✏️ تعديل
+
+                    </button>
+
+                    <button
+                        class="danger"
+                        onclick="deleteTransaction('${item.id}')">
+
+                        🗑️ حذف
+
+                    </button>
+
+                </div>
+
+            </td>
+
+        `;
+
+
+        table.appendChild(row);
+
+    });
+
+}
+
+
+/* =========================================================
+   RENDER DELETED
+========================================================= */
+
+function renderDeleted() {
+
+    const table =
+        document.getElementById(
+            "deletedTable"
+        );
+
+
+    table.innerHTML = "";
+
+
+    const deleted =
+        transactions.filter(
+            item =>
+                item.is_deleted === true
+        );
+
+
+    if (deleted.length === 0) {
+
+        table.innerHTML = `
+
+            <tr>
+
+                <td colspan="5">
+                    لا توجد عمليات محذوفة.
+                </td>
+
+            </tr>
+
+        `;
+
+        return;
+
+    }
+
+
+    deleted.forEach(function(item) {
+
+        const row =
+            document.createElement("tr");
+
+
+        row.innerHTML = `
+
+            <td>
+                ${item.transaction_date}
+            </td>
+
+            <td>
+                ${typeName(item.type)}
+            </td>
+
+            <td>
+                ${escapeHTML(item.category)}
+            </td>
+
+            <td>
+                ${formatMoney(item.amount)}
+            </td>
+
+            <td>
+
+                <div class="action-buttons">
+
+                    <button
+                        class="success"
+                        onclick="restoreTransaction('${item.id}')">
+
+                        ↩️ استرجاع
+
+                    </button>
+
+                    <button
+                        class="danger"
+                        onclick="permanentDelete('${item.id}')">
+
+                        ❌ حذف نهائي
+
+                    </button>
+
+                </div>
+
+            </td>
+
+        `;
+
+
+        table.appendChild(row);
+
+    });
+
+}
+
+
+/* =========================================================
+   DASHBOARD
+========================================================= */
+
+function updateDashboard() {
+
+    const active =
+        getActiveTransactions();
+
+
+    let income = 0;
+
+    let expenses = 0;
+
+    let savings = 0;
+
+    let investments = 0;
+
+    let debts = 0;
+
+
+    const categories = {};
+
+
+    active.forEach(function(item) {
+
+        const amount =
+            Number(item.amount);
+
+
+        if (item.type === "income") {
+
+            income += amount;
+
         }
 
 
-        /* =========================
-           حذف
-        ========================= */
+        if (item.type === "expense") {
 
-        function deleteTransaction(index) {
-
-            const confirmed =
-                confirm(
-                    "هل أنت متأكد من حذف العملية؟"
-                );
+            expenses += amount;
 
 
-            if (!confirmed) {
+            if (!categories[item.category]) {
 
-                return;
+                categories[item.category] = 0;
 
             }
 
 
-            data.splice(
-                index,
-                1
-            );
-
-
-            saveData();
-
-            showData();
-
-
-            alert(
-                "تم حذف العملية 🗑️"
-            );
+            categories[item.category] += amount;
 
         }
 
 
-        /* =========================
-           فلترة الشهر
-        ========================= */
+        if (item.type === "saving") {
 
-        document
-            .getElementById("filterBtn")
-            .addEventListener(
-                "click",
-                function() {
+            savings += amount;
 
-                    const month =
-                        document.getElementById(
-                            "monthFilter"
-                        ).value;
+        }
 
 
-                    if (month === "") {
+        if (item.type === "investment") {
 
-                        alert(
-                            "اختار الشهر أولاً"
-                        );
+            investments += amount;
 
-                        return;
-
-                    }
+        }
 
 
-                    currentMonth =
-                        month;
+        if (item.type === "debt") {
+
+            debts += amount;
+
+        }
+
+    });
 
 
-                    showData();
+    const remaining =
+        income -
+        expenses -
+        savings -
+        investments -
+        debts;
 
-                }
+
+    document.getElementById("income")
+        .textContent =
+        formatMoney(income);
+
+
+    document.getElementById("expenses")
+        .textContent =
+        formatMoney(expenses);
+
+
+    document.getElementById("savings")
+        .textContent =
+        formatMoney(savings);
+
+
+    document.getElementById("investments")
+        .textContent =
+        formatMoney(investments);
+
+
+    document.getElementById("debts")
+        .textContent =
+        formatMoney(debts);
+
+
+    document.getElementById("remaining")
+        .textContent =
+        formatMoney(remaining);
+
+
+    /* =========================
+       PERCENTAGES
+    ========================= */
+
+    let savingPercent = 0;
+
+    let investmentPercent = 0;
+
+    let expensePercent = 0;
+
+
+    if (income > 0) {
+
+        savingPercent =
+            (savings / income) * 100;
+
+        investmentPercent =
+            (investments / income) * 100;
+
+        expensePercent =
+            (expenses / income) * 100;
+
+    }
+
+
+    document.getElementById(
+        "savingPercentage"
+    ).textContent =
+        savingPercent.toFixed(1) + "%";
+
+
+    document.getElementById(
+        "investmentPercentage"
+    ).textContent =
+        investmentPercent.toFixed(1) + "%";
+
+
+    document.getElementById(
+        "expensePercentage"
+    ).textContent =
+        expensePercent.toFixed(1) + "%";
+
+
+    document.getElementById(
+        "savingProgress"
+    ).style.width =
+        Math.min(savingPercent, 100) + "%";
+
+
+    document.getElementById(
+        "investmentProgress"
+    ).style.width =
+        Math.min(investmentPercent, 100) + "%";
+
+
+    document.getElementById(
+        "expenseProgress"
+    ).style.width =
+        Math.min(expensePercent, 100) + "%";
+
+
+    /* =========================
+       STATUS
+    ========================= */
+
+    let status;
+
+
+    if (income === 0) {
+
+        status =
+            "💡 أضف دخلك وعملياتك عشان نبدأ متابعة وضعك المالي.";
+
+    }
+
+    else if (remaining < 0) {
+
+        status =
+            "⚠️ التزاماتك ومصروفاتك أكبر من دخلك في الفترة المختارة.";
+
+    }
+
+    else if (
+        savings + investments >= income * .20
+    ) {
+
+        status =
+            "🔥 ممتاز! أنت تخصص 20% أو أكثر من دخلك للادخار والاستثمار.";
+
+    }
+
+    else if (
+        savings + investments > 0
+    ) {
+
+        status =
+            "👍 جيد، عندك ادخار واستثمار. حاول تزود النسبة تدريجيًا.";
+
+    }
+
+    else {
+
+        status =
+            "💡 حاول تخصص جزء ثابت من دخلك للادخار أو الاستثمار.";
+
+    }
+
+
+    document.getElementById(
+        "financialStatus"
+    ).textContent =
+        status;
+
+
+    /* =========================
+       DEBT
+    ========================= */
+
+    document.getElementById(
+        "debtAnalysis"
+    ).textContent =
+        formatMoney(debts);
+
+
+    document.getElementById(
+        "afterDebt"
+    ).textContent =
+        formatMoney(remaining);
+
+
+    /* =========================
+       TOP CATEGORY
+    ========================= */
+
+    const categoryEntries =
+        Object.entries(categories)
+            .sort(
+                (a,b) =>
+                    b[1] - a[1]
             );
 
 
-        /* =========================
-           عرض الكل
-        ========================= */
+    const top =
+        document.getElementById(
+            "topCategory"
+        );
 
+
+    if (categoryEntries.length === 0) {
+
+        top.textContent =
+            "لا توجد مصروفات";
+
+    } else {
+
+        top.innerHTML = `
+
+            🏆 ${escapeHTML(categoryEntries[0][0])}
+
+            <br>
+
+            <small>
+                ${formatMoney(categoryEntries[0][1])}
+            </small>
+
+        `;
+
+    }
+
+
+    /* =========================
+       CATEGORY ANALYSIS
+    ========================= */
+
+    const analysis =
+        document.getElementById(
+            "categoryAnalysis"
+        );
+
+
+    analysis.innerHTML = "";
+
+
+    if (categoryEntries.length === 0) {
+
+        analysis.textContent =
+            "لا توجد مصروفات.";
+
+    }
+
+
+    categoryEntries.forEach(
+        function(entry) {
+
+            const name =
+                entry[0];
+
+            const value =
+                entry[1];
+
+
+            const percentage =
+                expenses > 0
+                    ? value / expenses * 100
+                    : 0;
+
+
+            const row =
+                document.createElement("div");
+
+
+            row.className =
+                "category-row";
+
+
+            row.innerHTML = `
+
+                <div class="category-info">
+
+                    <span>
+                        ${escapeHTML(name)}
+                    </span>
+
+                    <span>
+                        ${formatMoney(value)}
+                        (${percentage.toFixed(1)}%)
+                    </span>
+
+                </div>
+
+                <div class="category-bar">
+
+                    <div
+                        class="category-fill"
+                        style="width:${percentage}%">
+                    </div>
+
+                </div>
+
+            `;
+
+
+            analysis.appendChild(row);
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   MONTH FILTER
+========================================================= */
+
+function filterMonth() {
+
+    const month =
         document
-            .getElementById("showAllBtn")
-            .addEventListener(
-                "click",
-                function() {
-
-                    currentMonth =
-                        null;
+            .getElementById("monthFilter")
+            .value;
 
 
-                    document.getElementById(
-                        "monthFilter"
-                    ).value = "";
+    if (!month) {
+
+        toast(
+            "اختار الشهر أولاً.",
+            "error"
+        );
+
+        return;
+
+    }
 
 
-                    showData();
-
-                }
-            );
+    currentMonth =
+        month;
 
 
-        /* =========================
-           تشغيل البرنامج
-        ========================= */
+    renderAll();
 
-        showData();
 
-    </script>
+    toast(
+        "تم عرض بيانات الشهر المحدد."
+    );
+
+}
+
+
+function showAll() {
+
+    currentMonth =
+        null;
+
+
+    document
+        .getElementById("monthFilter")
+        .value =
+        "";
+
+
+    renderAll();
+
+}
+
+
+/* =========================================================
+   CATEGORY CUSTOM
+========================================================= */
+
+document
+    .getElementById("category")
+    .addEventListener(
+        "change",
+        function() {
+
+            if (this.value === "other") {
+
+                document
+                    .getElementById(
+                        "customCategoryBox"
+                    )
+                    .classList
+                    .remove("hidden");
+
+            } else {
+
+                document
+                    .getElementById(
+                        "customCategoryBox"
+                    )
+                    .classList
+                    .add("hidden");
+
+                document
+                    .getElementById(
+                        "customCategory"
+                    )
+                    .value = "";
+
+            }
+
+        }
+    );
+
+
+/* =========================================================
+   TABS
+========================================================= */
+
+function switchTab(name, button) {
+
+    document
+        .querySelectorAll(
+            "section[id$='Section']"
+        )
+        .forEach(
+            section =>
+                section.classList.add("hidden")
+        );
+
+
+    document
+        .querySelectorAll(".main-tab")
+        .forEach(
+            btn =>
+                btn.classList.remove("active")
+        );
+
+
+    const section =
+        document.getElementById(
+            name + "Section"
+        );
+
+
+    if (section) {
+
+        section.classList.remove("hidden");
+
+    }
+
+
+    if (button) {
+
+        button.classList.add("active");
+
+    }
+
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+
+}
+
+
+function switchTabByName(name) {
+
+    const button =
+        Array.from(
+            document.querySelectorAll(
+                ".main-tab"
+            )
+        ).find(
+            btn =>
+                btn.textContent
+                    .toLowerCase()
+                    .includes(
+                        name === "dashboard"
+                            ? "dashboard"
+                            : name === "add"
+                                ? "إضافة"
+                                : name === "transactions"
+                                    ? "العمليات"
+                                    : name === "deleted"
+                                        ? "المحذوفات"
+                                        : "أهدافي"
+                    )
+        );
+
+
+    switchTab(
+        name,
+        button
+    );
+
+}
+
+
+/* =========================================================
+   GOALS
+========================================================= */
+
+/*
+   الأهداف محفوظة محليًا في هذه النسخة.
+   العمليات المالية نفسها Online في Supabase.
+*/
+
+function getGoals() {
+
+    try {
+
+        return JSON.parse(
+            localStorage.getItem(
+                "moneyFollowGoals"
+            )
+        ) || [];
+
+    } catch {
+
+        return [];
+
+    }
+
+}
+
+
+function saveGoals(goals) {
+
+    localStorage.setItem(
+        "moneyFollowGoals",
+        JSON.stringify(goals)
+    );
+
+}
+
+
+function addGoal() {
+
+    const name =
+        document
+            .getElementById("goalName")
+            .value
+            .trim();
+
+
+    const target =
+        Number(
+            document
+                .getElementById("goalTarget")
+                .value
+        );
+
+
+    if (!name || target <= 0) {
+
+        toast(
+            "اكتب اسم الهدف والمبلغ.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    const goals =
+        getGoals();
+
+
+    goals.push({
+
+        id:
+            Date.now(),
+
+        name:
+            name,
+
+        target:
+            target,
+
+        saved:
+            0
+
+    });
+
+
+    saveGoals(goals);
+
+
+    document
+        .getElementById("goalName")
+        .value = "";
+
+
+    document
+        .getElementById("goalTarget")
+        .value = "";
+
+
+    renderGoals();
+
+
+    toast(
+        "تم إضافة الهدف 🎯",
+        "success"
+    );
+
+}
+
+
+function deleteGoal(id) {
+
+    const confirmed =
+        confirm(
+            "حذف هذا الهدف؟"
+        );
+
+
+    if (!confirmed) return;
+
+
+    let goals =
+        getGoals();
+
+
+    goals =
+        goals.filter(
+            goal =>
+                goal.id !== id
+        );
+
+
+    saveGoals(goals);
+
+    renderGoals();
+
+}
+
+
+function updateGoalSaved(id, value) {
+
+    let goals =
+        getGoals();
+
+
+    const goal =
+        goals.find(
+            x =>
+                x.id === id
+        );
+
+
+    if (!goal) return;
+
+
+    goal.saved =
+        Math.max(
+            0,
+            Number(value)
+        );
+
+
+    saveGoals(goals);
+
+    renderGoals();
+
+}
+
+
+function renderGoals() {
+
+    const container =
+        document.getElementById(
+            "goalsList"
+        );
+
+
+    const goals =
+        getGoals();
+
+
+    if (goals.length === 0) {
+
+        container.innerHTML =
+            "لا توجد أهداف حتى الآن.";
+
+        return;
+
+    }
+
+
+    container.innerHTML = "";
+
+
+    goals.forEach(
+        function(goal) {
+
+            const percentage =
+                goal.target > 0
+                    ? Math.min(
+                        100,
+                        goal.saved /
+                        goal.target *
+                        100
+                    )
+                    : 0;
+
+
+            const div =
+                document.createElement("div");
+
+
+            div.className =
+                "goal-box";
+
+
+            div.innerHTML = `
+
+                <div class="goal-top">
+
+                    <strong>
+                        🎯 ${escapeHTML(goal.name)}
+                    </strong>
+
+                    <button
+                        class="danger"
+                        onclick="deleteGoal(${goal.id})">
+
+                        🗑️
+
+                    </button>
+
+                </div>
+
+
+                <p>
+                    ${formatMoney(goal.saved)}
+                    من
+                    ${formatMoney(goal.target)}
+                </p>
+
+
+                <div class="progress">
+
+                    <div
+                        class="progress-bar"
+                        style="width:${percentage}%">
+                    </div>
+
+                </div>
+
+
+                <p>
+                    ${percentage.toFixed(1)}% من الهدف
+                </p>
+
+
+                <label>
+                    المبلغ المحقق حاليًا
+                </label>
+
+                <input
+                    type="number"
+                    value="${goal.saved}"
+                    min="0"
+                    onchange="updateGoalSaved(${goal.id}, this.value)"
+                >
+
+            `;
+
+
+            container.appendChild(div);
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   ESCAPE HTML
+========================================================= */
+
+function escapeHTML(value) {
+
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+}
+
+
+/* =========================================================
+   AUTH STATE
+========================================================= */
+
+supabaseClient.auth.onAuthStateChange(
+    async function(event, session) {
+
+        if (session && session.user) {
+
+            currentUser =
+                session.user;
+
+            await initializeApp();
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   START
+========================================================= */
+
+(async function() {
+
+    const {
+        data
+    } =
+        await supabaseClient.auth.getSession();
+
+
+    if (
+        data &&
+        data.session &&
+        data.session.user
+    ) {
+
+        currentUser =
+            data.session.user;
+
+        await initializeApp();
+
+    }
+
+})();
+
+</script>
 
 </body>
-
 </html>

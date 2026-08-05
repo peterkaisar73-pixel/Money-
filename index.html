@@ -553,7 +553,77 @@
 
         }
 
-    </style>
+    
+        /* =========================
+           WALLETS / ENVELOPES
+        ========================= */
+        .wallet-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin: 18px 0;
+        }
+        .wallet-card {
+            background: linear-gradient(145deg,#ffffff,#f7f9fc);
+            border: 1px solid #e5e7eb;
+            border-radius: 20px;
+            padding: 18px;
+            box-shadow: 0 6px 20px rgba(15,23,42,.07);
+        }
+        .wallet-card .wallet-icon { font-size: 32px; }
+        .wallet-card .wallet-name { font-weight: 700; font-size: 18px; margin-top: 8px; }
+        .wallet-card .wallet-balance { font-size: 25px; font-weight: 800; margin: 10px 0; }
+        .wallet-card .wallet-meta { color:#64748b; font-size:13px; }
+        .wallet-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+        .wallet-actions button { border:0; border-radius:12px; padding:9px 12px; background:#e2e8f0; }
+        .wallet-actions .primary { background:#0f172a; color:white; }
+        .wallet-form {
+            display:grid;
+            grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+            gap:12px;
+        }
+        .wallet-form .full { grid-column:1/-1; }
+        .wallet-summary {
+            display:grid;
+            grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+            gap:12px;
+            margin:16px 0;
+        }
+        .wallet-summary .mini {
+            background:#fff;
+            border-radius:16px;
+            padding:15px;
+            border:1px solid #e5e7eb;
+        }
+        .wallet-summary .mini strong { display:block; font-size:20px; margin-top:6px; }
+        .transfer-arrow { text-align:center; font-size:28px; }
+        .wallet-empty {
+            padding:25px;
+            text-align:center;
+            color:#64748b;
+            background:#f8fafc;
+            border-radius:16px;
+        }
+        .wallet-movement-table { width:100%; border-collapse:collapse; margin-top:15px; }
+        .wallet-movement-table th,.wallet-movement-table td {
+            padding:10px 8px;
+            border-bottom:1px solid #e5e7eb;
+            text-align:right;
+        }
+        @media (max-width:600px) {
+            .wallet-form { grid-template-columns:1fr; }
+            .wallet-card .wallet-balance { font-size:22px; }
+        }
+
+</style>
+
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-512.png">
+
 </head>
 
 
@@ -775,6 +845,13 @@
             🎯 أهدافي
 
         </button>
+
+        <button
+            class="main-tab"
+            onclick="switchTab('wallets', this)">
+            👛 المحافظ
+        </button>
+
 
     </div>
 
@@ -1883,6 +1960,7 @@ async function initializeApp() {
 
 
     await loadTransactions();
+    await loadWallets();
 
     loadGoals();
 
@@ -3220,7 +3298,9 @@ function switchTabByName(name) {
                                     ? "العمليات"
                                     : name === "deleted"
                                         ? "المحذوفات"
-                                        : "أهدافي"
+                                        : name === "wallets"
+                                            ? "المحافظ"
+                                            : "أهدافي"
                     )
         );
 
@@ -3514,6 +3594,388 @@ function renderGoals() {
 }
 
 
+
+/* =========================================================
+   WALLETS / ENVELOPES
+========================================================= */
+
+let wallets = [];
+let walletMovements = [];
+
+function walletToday() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+function walletTypeName(type) {
+    return {
+        spending: "مصروفات",
+        saving: "ادخار",
+        investment: "استثمار",
+        debt: "ديون",
+        custom: "مخصص"
+    }[type] || "مخصص";
+}
+
+function walletMovementName(type) {
+    return {
+        deposit: "إضافة",
+        expense: "مصروف",
+        transfer_in: "تحويل وارد",
+        transfer_out: "تحويل صادر"
+    }[type] || type;
+}
+
+function walletBalance(walletId) {
+    return walletMovements
+        .filter(m => m.wallet_id === walletId)
+        .reduce((sum, m) => {
+            if (["deposit", "transfer_in"].includes(m.movement_type)) return sum + Number(m.amount || 0);
+            if (m.movement_type === "expense" || m.movement_type === "transfer_out") return sum - Number(m.amount || 0);
+            return sum;
+        }, 0);
+}
+
+async function loadWallets() {
+    if (!currentUser) return;
+
+    const { data, error } = await supabaseClient
+        .from("wallets")
+        .select("*")
+        .order("created_at", { ascending: true });
+
+    if (error) {
+        console.error(error);
+        toast("تعذر تحميل المحافظ: " + error.message, "error");
+        return;
+    }
+
+    wallets = data || [];
+
+    const { data: movements, error: movementsError } = await supabaseClient
+        .from("wallet_movements")
+        .select("*")
+        .order("movement_date", { ascending: false })
+        .order("created_at", { ascending: false });
+
+    if (movementsError) {
+        console.error(movementsError);
+        toast("تعذر تحميل حركات المحافظ: " + movementsError.message, "error");
+        return;
+    }
+
+    walletMovements = movements || [];
+    renderWallets();
+}
+
+function walletOptions(selectId) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    const oldValue = select.value;
+    select.innerHTML = wallets.length
+        ? wallets.map(w => `<option value="${w.id}">${escapeHTML(w.icon || "👛")} ${escapeHTML(w.name)}</option>`).join("")
+        : `<option value="">لا توجد محافظ</option>`;
+
+    if (wallets.some(w => w.id === oldValue)) select.value = oldValue;
+}
+
+function renderWallets() {
+    const list = document.getElementById("walletsList");
+    if (!list) return;
+
+    if (!wallets.length) {
+        list.innerHTML = `<div class="wallet-empty">لسه مفيش محافظ. اعمل أول ظرف فوق 👆</div>`;
+    } else {
+        list.innerHTML = wallets.map(w => {
+            const balance = walletBalance(w.id);
+            return `
+                <div class="wallet-card">
+                    <div class="wallet-icon">${escapeHTML(w.icon || "👛")}</div>
+                    <div class="wallet-name">${escapeHTML(w.name)}</div>
+                    <div class="wallet-meta">${escapeHTML(walletTypeName(w.wallet_type))}</div>
+                    <div class="wallet-balance">${formatMoney(balance)}</div>
+                    <div class="wallet-meta">الرصيد الحالي</div>
+                    <div class="wallet-actions">
+                        <button class="primary" onclick="quickWalletExpense('${w.id}')">💸 صرف</button>
+                        <button onclick="quickWalletIncome('${w.id}')">➕ إضافة</button>
+                        <button onclick="deleteWallet('${w.id}')">🗑️ حذف</button>
+                    </div>
+                </div>
+            `;
+        }).join("");
+    }
+
+    ["transferFrom","transferTo","walletExpenseWallet","walletIncomeWallet"]
+        .forEach(walletOptions);
+
+    renderWalletMovements();
+
+    const total = wallets.reduce((s,w) => s + walletBalance(w.id), 0);
+    const totalIn = walletMovements
+        .filter(m => ["deposit","transfer_in"].includes(m.movement_type))
+        .reduce((s,m) => s + Number(m.amount || 0), 0);
+    const totalOut = walletMovements
+        .filter(m => ["expense","transfer_out"].includes(m.movement_type))
+        .reduce((s,m) => s + Number(m.amount || 0), 0);
+
+    document.getElementById("walletTotalBalance").textContent = formatMoney(total);
+    document.getElementById("walletTotalIn").textContent = formatMoney(totalIn);
+    document.getElementById("walletTotalOut").textContent = formatMoney(totalOut);
+
+    const today = walletToday();
+    ["transferDate","walletExpenseDate","walletIncomeDate"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && !el.value) el.value = today;
+    });
+}
+
+function renderWalletMovements() {
+    const tbody = document.getElementById("walletMovementsTable");
+    if (!tbody) return;
+
+    const walletMap = Object.fromEntries(wallets.map(w => [w.id, w]));
+
+    const rows = walletMovements.slice(0, 50).map(m => {
+        const w = walletMap[m.wallet_id];
+        const sign = ["deposit","transfer_in"].includes(m.movement_type) ? "+" : "-";
+        return `
+            <tr>
+                <td>${escapeHTML(m.movement_date || "")}</td>
+                <td>${escapeHTML(w ? `${w.icon || "👛"} ${w.name}` : "محفظة محذوفة")}</td>
+                <td>${escapeHTML(walletMovementName(m.movement_type))}</td>
+                <td>${sign}${formatMoney(Number(m.amount || 0))}</td>
+                <td>${escapeHTML(m.note || "")}</td>
+            </tr>
+        `;
+    }).join("");
+
+    tbody.innerHTML = rows || `<tr><td colspan="5" class="wallet-empty">لا توجد حركات حتى الآن.</td></tr>`;
+}
+
+async function createWallet() {
+    const name = document.getElementById("newWalletName").value.trim();
+    const icon = document.getElementById("newWalletIcon").value.trim() || "👛";
+    const type = document.getElementById("newWalletType").value;
+    const balance = Number(document.getElementById("newWalletBalance").value || 0);
+
+    if (!name) return toast("اكتب اسم المحفظة أولاً", "error");
+    if (balance < 0) return toast("الرصيد لا يمكن أن يكون سالبًا", "error");
+
+    showLoading(true);
+    try {
+        const { data: wallet, error } = await supabaseClient
+            .from("wallets")
+            .insert({
+                user_id: currentUser.id,
+                name,
+                icon,
+                wallet_type: type
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        if (balance > 0) {
+            const { error: movementError } = await supabaseClient
+                .from("wallet_movements")
+                .insert({
+                    user_id: currentUser.id,
+                    wallet_id: wallet.id,
+                    movement_type: "deposit",
+                    amount: balance,
+                    note: "رصيد افتتاحي",
+                    movement_date: walletToday()
+                });
+
+            if (movementError) throw movementError;
+        }
+
+        document.getElementById("newWalletName").value = "";
+        document.getElementById("newWalletBalance").value = "0";
+        toast("تم إنشاء المحفظة ✅");
+        await loadWallets();
+    } catch (e) {
+        console.error(e);
+        toast("حصل خطأ: " + e.message, "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function walletIncome() {
+    const walletId = document.getElementById("walletIncomeWallet").value;
+    const amount = Number(document.getElementById("walletIncomeAmount").value);
+    const date = document.getElementById("walletIncomeDate").value || walletToday();
+    const note = document.getElementById("walletIncomeNote").value.trim();
+
+    if (!walletId || !amount || amount <= 0) return toast("اختار المحفظة واكتب مبلغ صحيح", "error");
+
+    showLoading(true);
+    try {
+        const { error } = await supabaseClient
+            .from("wallet_movements")
+            .insert({
+                user_id: currentUser.id,
+                wallet_id: walletId,
+                movement_type: "deposit",
+                amount,
+                note: note || "إضافة للمحفظة",
+                movement_date: date
+            });
+
+        if (error) throw error;
+
+        document.getElementById("walletIncomeAmount").value = "";
+        document.getElementById("walletIncomeNote").value = "";
+        toast("تمت الإضافة للمحفظة ✅");
+        await loadWallets();
+    } catch (e) {
+        toast("حصل خطأ: " + e.message, "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function walletExpense() {
+    const walletId = document.getElementById("walletExpenseWallet").value;
+    const amount = Number(document.getElementById("walletExpenseAmount").value);
+    const category = document.getElementById("walletExpenseCategory").value.trim() || "أخرى";
+    const date = document.getElementById("walletExpenseDate").value || walletToday();
+    const note = document.getElementById("walletExpenseNote").value.trim();
+
+    if (!walletId || !amount || amount <= 0) return toast("اختار المحفظة واكتب مبلغ صحيح", "error");
+
+    const balance = walletBalance(walletId);
+    if (amount > balance) {
+        return toast(`رصيد المحفظة غير كافي. المتاح ${formatMoney(balance)}`, "error");
+    }
+
+    showLoading(true);
+    try {
+        const { error } = await supabaseClient
+            .from("wallet_movements")
+            .insert({
+                user_id: currentUser.id,
+                wallet_id: walletId,
+                movement_type: "expense",
+                amount,
+                category,
+                note: note || `مصروف من المحفظة: ${category}`,
+                movement_date: date
+            });
+
+        if (error) throw error;
+
+        // Also record it in the existing transactions table for the main dashboard.
+        const { error: txError } = await supabaseClient
+            .from("transactions")
+            .insert({
+                user_id: currentUser.id,
+                type: "expense",
+                category,
+                amount,
+                note: note || `مصروف من محفظة`,
+                date
+            });
+
+        if (txError) console.warn("Main transaction not recorded:", txError.message);
+
+        document.getElementById("walletExpenseAmount").value = "";
+        document.getElementById("walletExpenseNote").value = "";
+        toast("تم تسجيل المصروف وخصمه من المحفظة ✅");
+        await loadWallets();
+        await loadTransactions();
+        renderAll();
+    } catch (e) {
+        toast("حصل خطأ: " + e.message, "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function transferMoney() {
+    const from = document.getElementById("transferFrom").value;
+    const to = document.getElementById("transferTo").value;
+    const amount = Number(document.getElementById("transferAmount").value);
+    const date = document.getElementById("transferDate").value || walletToday();
+    const note = document.getElementById("transferNote").value.trim();
+
+    if (!from || !to || from === to) return toast("اختار محفظتين مختلفتين", "error");
+    if (!amount || amount <= 0) return toast("اكتب مبلغ صحيح", "error");
+
+    const sourceBalance = walletBalance(from);
+    if (amount > sourceBalance) {
+        return toast(`الرصيد غير كافي. المتاح ${formatMoney(sourceBalance)}`, "error");
+    }
+
+    showLoading(true);
+    try {
+        const { error } = await supabaseClient.rpc("transfer_between_wallets", {
+            p_from_wallet: from,
+            p_to_wallet: to,
+            p_amount: amount,
+            p_note: note || "تحويل بين المحافظ",
+            p_date: date
+        });
+
+        if (error) throw error;
+
+        document.getElementById("transferAmount").value = "";
+        document.getElementById("transferNote").value = "";
+        toast("تم التحويل بنجاح 🔄");
+        await loadWallets();
+    } catch (e) {
+        toast("فشل التحويل: " + e.message, "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+function quickWalletExpense(walletId) {
+    switchTabByName("wallets");
+    document.getElementById("walletExpenseWallet").value = walletId;
+    document.getElementById("walletExpenseAmount").focus();
+    window.scrollTo({ top: document.getElementById("walletExpenseAmount").getBoundingClientRect().top + window.scrollY - 120, behavior: "smooth" });
+}
+
+function quickWalletIncome(walletId) {
+    switchTabByName("wallets");
+    document.getElementById("walletIncomeWallet").value = walletId;
+    document.getElementById("walletIncomeAmount").focus();
+    window.scrollTo({ top: document.getElementById("walletIncomeAmount").getBoundingClientRect().top + window.scrollY - 120, behavior: "smooth" });
+}
+
+async function deleteWallet(walletId) {
+    const wallet = wallets.find(w => w.id === walletId);
+    if (!wallet) return;
+
+    const balance = walletBalance(walletId);
+    if (Math.abs(balance) > 0.001) {
+        return toast("لا يمكن حذف محفظة فيها رصيد. انقل الرصيد أولاً.", "error");
+    }
+
+    if (!confirm(`حذف محفظة "${wallet.name}"؟`)) return;
+
+    showLoading(true);
+    try {
+        const { error } = await supabaseClient
+            .from("wallets")
+            .delete()
+            .eq("id", walletId);
+
+        if (error) throw error;
+
+        toast("تم حذف المحفظة");
+        await loadWallets();
+    } catch (e) {
+        toast("تعذر الحذف: " + e.message, "error");
+    } finally {
+        showLoading(false);
+    }
+}
+
+
 /* =========================================================
    ESCAPE HTML
 ========================================================= */
@@ -3576,6 +4038,13 @@ supabaseClient.auth.onAuthStateChange(
     }
 
 })();
+
+
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(err => console.log("PWA service worker:", err));
+    });
+}
 
 </script>
 

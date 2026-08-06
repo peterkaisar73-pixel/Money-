@@ -1,0 +1,22 @@
+# ميزانيتي — Offline PWA
+
+تطبيق Web App عربي لإدارة الميزانية والادخار، جاهز للنشر على GitHub Pages والعمل كتطبيق على الهاتف والكمبيوتر.
+
+## الملفات
+- `index.html`
+- `style.css`
+- `app.js`
+- `manifest.json` — تعريف التطبيق للتثبيت
+- `sw.js` — تشغيل الملفات الأساسية Offline بعد أول زيارة
+- `icon-192.png` و`icon-512.png` — أيقونة التطبيق
+- `app-preview.png` — صورة ترويجية
+
+## النشر على GitHub Pages
+1. أنشئ Repository جديد على GitHub، مثل `meezanyti`.
+2. ارفع **كل الملفات الموجودة في هذا المجلد إلى جذر الـRepository**.
+3. من `Settings` → `Pages` اختر `Deploy from a branch` ثم `main` و`/(root)` ثم Save.
+4. افتح الرابط الذي يعطيه GitHub Pages.
+5. افتح التطبيق مرة واحدة بالإنترنت؛ بعدها يمكن للـService Worker تشغيل ملفات التطبيق الأساسية بدون إنترنت.
+6. على الهاتف اختر `Add to Home Screen` أو `Install App` ليظهر كتطبيق مستقل.
+
+> ملاحظة: GitHub Pages يحتاج الإنترنت في أول تحميل للرابط، وبعد تخزين ملفات التطبيق في الـCache يمكن تشغيل التطبيق Offline. البيانات نفسها محفوظة محليًا في المتصفح عبر LocalStorage.

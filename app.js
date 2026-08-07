@@ -232,7 +232,7 @@ function renderEnvelopes(){
        </div>
 
        <div class="action-row envelope-actions">
-         ${!c.closed?`<button class="btn btn-primary" onclick="openExpense('${e.id}')">＋ إضافة مصروف</button>`:""}
+         ${!c.closed?`<button type="button" class="btn btn-primary expense-add-btn" data-envelope-id="${e.id}">＋ إضافة مصروف</button>`:""}
          <button class="btn btn-secondary" onclick="openEnvelope('${e.id}')">تعديل الظرف</button>
          ${!c.closed?`<button class="btn btn-danger" onclick="deleteEnvelope('${e.id}')">حذف</button>`:""}
        </div>
@@ -666,6 +666,7 @@ function showPage(page){
  document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));document.getElementById("page-"+page).classList.add("active");
  if(page==="reports")renderReports();
 }
+document.addEventListener("click",e=>{const b=e.target.closest(".expense-add-btn");if(!b)return;e.preventDefault();openExpense(b.dataset.envelopeId);});
 window.approveCycle=approveCycle;window.showPage=showPage;window.openExpense=openExpense;window.deleteExpense=deleteExpense;window.openNewCycle=openNewCycle;window.openIncome=openIncome;window.openMidCycleIncome=openMidCycleIncome;window.selectCycle=selectCycle;window.openEmergency=openEmergency;window.deleteIncome=deleteIncome;window.openEnvelope=openEnvelope;window.deleteEnvelope=deleteEnvelope;window.openSavings=openSavings;window.openMethod=openMethod;window.openFawryDeposit=openFawryDeposit;window.openFawryWithdrawal=openFawryWithdrawal;window.openFawryClose=openFawryClose;window.closeCycle=closeCycle;window.addSurplusRow=addSurplusRow;window.openDebtSetup=openDebtSetup;window.openDebtPayment=openDebtPayment;window.exportBackup=exportBackup;window.restoreBackup=restoreBackup;window.exportPDF=exportPDF;window.clearAllData=clearAllData;window.buildReport=buildReport;window.closeModal=closeModal;window.render=render;
 
 document.querySelectorAll(".nav-item").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.page)));

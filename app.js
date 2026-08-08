@@ -1,0 +1,782 @@
+(() => {
+"use strict";
+
+const KEY = "budget_offline_v1";
+const today = () => new Date().toISOString().slice(0,10);
+const uid = () => crypto?.randomUUID?.() || ("id_"+Date.now()+"_"+Math.random().toString(36).slice(2));
+const money = n => new Intl.NumberFormat("ar-EG",{maximumFractionDigits:2}).format(Number(n)||0) + " ج.م";
+const num = v => Math.max(0, Number(v)||0);
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+const sum = arr => arr.reduce((a,b)=>a+Number(b||0),0);
+
+const blank = {
+  settings:{theme:"light"},
+  cycles:[],
+  currentCycleId:null,
+  savingsMethods:[
+    {id:"fawry",name:"فوري",system:true},
+    {id:"gold",name:"ذهب",system:false},
+    {id:"gold_investment",name:"استثمار الذهب",system:false},
+    {id:"association",name:"جمعية",system:false},
+    {id:"certificate",name:"شهادة",system:false},
+    {id:"investment",name:"استثمار",system:false},
+    {id:"other",name:"أخرى",system:false}
+  ],
+  fawry:{openingBalance:0, transactions:[], closings:[]},
+  debt:{original:0, payments:[]},
+  transactions:[]
+};
+let db = load();
+
+function load(){
+  try{
+    const x=JSON.parse(localStorage.getItem(KEY));
+    if(x){
+      x.settings ||= {theme:"light"}; x.cycles ||= []; x.savingsMethods ||= blank.savingsMethods;
+      if(!x.savingsMethods.some(m=>m.id==="gold_investment")) x.savingsMethods.splice(Math.max(0,x.savingsMethods.findIndex(m=>m.id==="association")),0,{id:"gold_investment",name:"استثمار الذهب",system:false});
+      x.fawry ||= blank.fawry; x.debt ||= blank.debt; x.transactions ||= [];
+      x.cycles.forEach(c=>{c.income ||= []; c.incomeAllocations ||= []; c.envelopes ||= []; c.savings ||= []; c.emergencies ||= []; c.envelopes.forEach(e=>{e.expenses ||= [];});});
+      return x;
+    }
+  }catch(e){}
+  return structuredClone(blank);
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(db));}
+function toast(msg){const el=document.getElementById("toast");el.textContent=msg;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2200)}
+function current(){return db.cycles.find(c=>c.id===db.currentCycleId) || null}
+function cycleBy(id){return db.cycles.find(c=>c.id===id)}
+function cycleName(c){return c?.name || monthLabel(c)}
+function activeOrLatest(){return current() || db.cycles.at(-1) || null}
+function cycleIncome(c){return sum((c?.income||[]).map(x=>x.amount))}
+function cycleSavings(c){return sum((c?.savings||[]).map(x=>x.amount))}
+function envelopeActual(e){
+  if((e?.expenses||[]).length) return sum(e.expenses.map(x=>x.amount));
+  return actualIsEntered(e) ? Number(e.actual||0) : null;
+}
+function cycleActual(c){return sum((c?.envelopes||[]).map(e=>envelopeActual(e) ?? 0))}
+function cyclePlanned(c){return sum((c?.envelopes||[]).map(x=>x.planned))}
+function cycleEnvelopeAllocations(c){return sum((c?.incomeAllocations||[]).filter(x=>x.targetType==="envelope").map(x=>x.amount))}
+function cycleAllocated(c){return cyclePlanned(c)+cycleEnvelopeAllocations(c)+savingsByMethod(c,"fawry")+savingsByMethod(c,"gold_investment")}
+function monthLabel(c){
+  if(!c) return "الدورة";
+  const d=new Date((c.startDate||today())+"T12:00:00");
+  return new Intl.DateTimeFormat("ar-EG",{month:"long",year:"numeric"}).format(d);
+}
+function cycleDisplayName(c){return c?.name || monthLabel(c)}
+function previousCycle(c){
+  if(!c) return null;
+  const i=db.cycles.findIndex(x=>x.id===c.id);
+  return i>0?db.cycles[i-1]:null;
+}
+function cycleUnallocated(c){return Math.max(0,cycleIncome(c)-cycleAllocated(c))}
+function cycleOverAllocated(c){return Math.max(0,cycleAllocated(c)-cycleIncome(c))}
+function allocationStatus(c){return {income:cycleIncome(c),allocated:cycleAllocated(c),remaining:cycleUnallocated(c),over:cycleOverAllocated(c)}}
+function actualIsEntered(e){return e?.actualEntered===true || (e?.actualEntered===undefined && e?.actual!==null && e?.actual!==undefined && e?.actual!=="")}
+function envelopeDelta(e){const a=envelopeActual(e);return a!==null?Number(e.planned||0)-a:0}
+function savingsByMethod(c,id){return sum((c?.savings||[]).filter(x=>x.methodId===id).map(x=>x.amount))}
+function allSavingsByMethod(id){return sum(db.cycles.flatMap(c=>(c.savings||[]).filter(x=>x.methodId===id).map(x=>x.amount)))}
+function debtPaid(){return sum(db.debt.payments.map(x=>x.amount))}
+function debtRemaining(){return Math.max(0,Number(db.debt.original||0)-debtPaid())}
+function fawryForCycle(c){
+  const tx=db.fawry.transactions.filter(x=>x.cycleId===c?.id);
+  const deposits=sum(tx.filter(x=>x.type==="deposit").map(x=>x.amount));
+  const withdrawals=sum(tx.filter(x=>x.type==="withdrawal").map(x=>x.amount));
+  const close=db.fawry.closings.find(x=>x.cycleId===c?.id);
+  const expected=Number(c?.fawryOpening||0)+deposits-withdrawals;
+  const interest=close ? Number(close.actualBalance||0)-expected : null;
+  return {tx,deposits,withdrawals,close,expected,interest};
+}
+function addTransaction(t){db.transactions.unshift({...t,id:uid(),date:t.date||today()});}
+
+function render(){
+  document.body.classList.toggle("dark",db.settings.theme==="dark");
+  renderDashboard(); renderIncome(); renderEnvelopes(); renderSavings(); renderFawry(); renderDebt(); renderTransactions(); renderReports(); renderBackup();
+}
+function pageHead(title,desc,actions=""){return `<div class="page-head"><div><h2>${title}</h2><p>${desc}</p></div><div class="action-row">${actions}</div></div>`}
+function noCycle(){return `<div class="card empty"><h3>لا توجد دورة مالية نشطة</h3><p>ابدأ دورة جديدة يدويًا عند نزول المرتب.</p><button class="btn btn-primary" onclick="openNewCycle()">🟢 بدء دورة مالية جديدة</button></div>`}
+function metric(icon,label,value,sub="",cls=""){return `<div class="card metric ${cls}"><div class="label">${icon} ${label}</div><div class="value">${value}</div><div class="sub">${sub}</div></div>`}
+
+function cycleStatus(c){
+ const al=allocationStatus(c);
+ const pending=(c.envelopes||[]).filter(e=>envelopeActual(e)===null).length;
+ const hasDeficit=(c.envelopes||[]).some(e=>envelopeDelta(e)<0);
+ const hasSurplus=(c.envelopes||[]).some(e=>envelopeDelta(e)>0);
+ if(!c.approved&&!c.closed) return {cls:"status-warn",icon:"🟡",text:"تحتاج اعتماد",detail:al.remaining>0?`متبقي ${money(al.remaining)} غير موزع`:"راجع البيانات ثم اعتمد الدورة"};
+ if(pending) return {cls:"status-warn",icon:"🟠",text:"بيانات ناقصة",detail:`${pending} ظرف لم يدخل فعليه بعد`};
+ if(hasDeficit) return {cls:"status-danger",icon:"🔴",text:"يوجد عجز",detail:"راجع العجز قبل إغلاق الدورة"};
+ if(hasSurplus) return {cls:"status-good",icon:"🟢",text:"يوجد فائض",detail:"يوجد فائض يحتاج توزيع"};
+ return {cls:"status-good",icon:"🟢",text:c.closed?"مغلقة":"جاهزة",detail:c.closed?"تم إغلاق الدورة":"كل البيانات الأساسية مكتملة"};
+}
+function flowBar(label,value,total,icon){
+ const pct=total>0?Math.max(0,Math.min(100,value/total*100)):0;
+ return `<div class="flow-row"><div class="flow-label"><span>${icon} ${esc(label)}</span><strong>${money(value)}</strong></div><div class="flow-track"><span style="width:${pct}%"></span></div></div>`;
+}
+function savingsDonut(c){
+ const methods=db.savingsMethods.map(m=>({name:m.name,value:savingsByMethod(c,m.id)})).filter(x=>x.value>0);
+ const total=sum(methods.map(x=>x.value));
+ if(!total) return `<div class="empty">لا يوجد تحويش مسجل في هذه الدورة.</div>`;
+ const palette=["#0f766e","#d6b656","#2563eb","#7c3aed","#ea580c","#0891b2","#64748b"];
+ let acc=0, stops=[];
+ methods.forEach((x,i)=>{const a=acc/total*360,b=(acc+x.value)/total*360;stops.push(`${palette[i%palette.length]} ${a}deg ${b}deg`);acc+=x.value;});
+ return `<div class="donut-layout"><div class="donut" style="background:conic-gradient(${stops.join(",")})"><div class="donut-hole"><strong>${money(total)}</strong><span>إجمالي التحويش</span></div></div><div class="donut-legend">${methods.map((x,i)=>`<div><span><i style="background:${palette[i%palette.length]}"></i>${esc(x.name)}</span><strong>${money(x.value)}</strong></div>`).join("")}</div></div>`;
+}
+function renderDashboard(){
+ const c=activeOrLatest();
+ let h=pageHead("لوحة التحكم","صورة مالية واضحة في ثوانٍ",`<button class="btn btn-secondary btn-sm" onclick="showPage('transactions')">🧾 سجل العمليات</button>`);
+ if(!c){document.getElementById("page-dashboard").innerHTML=h+noCycle();return}
+ const f=fawryForCycle(c), debt=debtRemaining(), paid=debtPaid();
+ const pct=db.debt.original?Math.min(100,paid/db.debt.original*100):0;
+ const prev=previousCycle(c), al=allocationStatus(c), status=cycleStatus(c);
+ const envelopeSurplus=sum((c.envelopes||[]).map(e=>Math.max(0,envelopeDelta(e))));
+ const envelopeDeficit=sum((c.envelopes||[]).map(e=>Math.max(0,-envelopeDelta(e))));
+ const emergency=sum((c.emergencies||[]).map(x=>x.amount));
+ const income=cycleIncome(c), actual=cycleActual(c), savings=cycleSavings(c);
+ const allocatedToEnvelopes=cyclePlanned(c);
+ const flowTotal=Math.max(income,allocatedToEnvelopes+savings+paid+emergency,1);
+
+ h+=`<div class="dashboard-hero">
+   <div class="hero-main">
+     <div class="eyebrow">📅 الدورة الحالية</div>
+     <h2>${esc(cycleDisplayName(c))}</h2>
+     <p>${esc(c.startDate||"")} ${c.endDate?"→ "+esc(c.endDate):"→ مفتوحة"}</p>
+   </div>
+   <div class="cycle-status ${status.cls}"><strong>${status.icon} ${status.text}</strong><span>${status.detail}</span></div>
+ </div>`;
+
+ h+=`<div class="card cycle-switcher"><div><strong>اختيار الدورة</strong><small class="muted">التنقل بين كل الشهور محفوظ محليًا</small></div>
+ <select class="cycle-select" onchange="selectCycle(this.value)">${db.cycles.slice().reverse().map(x=>`<option value="${x.id}" ${x.id===c.id?"selected":""}>${esc(cycleDisplayName(x))} — ${esc(x.startDate||"")}${x.endDate?" → "+esc(x.endDate):""}</option>`).join("")}</select></div>`;
+
+ if(!c.approved&&!c.closed){
+   h+=`<div class="alert-card"><div><strong>🟡 الدورة غير معتمدة</strong><span>راجع الدخل والأظرف قبل الاعتماد.</span></div><button class="btn btn-primary btn-sm" onclick="approveCycle()">✅ اعتماد الدورة</button></div>`;
+ }
+
+ h+=`<div class="cards dashboard-kpis">
+   ${metric("💵","إجمالي الدخل",money(income),"كل مصادر الدخل")}
+   ${metric("💸","المصروف الفعلي",money(actual),"مصروف الأظرف")}
+   ${metric("🎯","إجمالي التحويش",money(savings),"ذهب + فوري + غيره")}
+   ${metric("🏦","رصيد فوري",money(f.close?f.close.actualBalance:f.expected),f.close?"الرصيد الفعلي":"الرصيد المفترض")}
+   ${metric("📈","فوائد فوري",f.interest===null?"—":money(f.interest),"فرق الرصيد الفعلي")}
+   ${metric("💳","المتبقي من الدين",money(debt),`سداد ${pct.toFixed(1)}%`)}
+ </div>`;
+
+ h+=`<div class="grid-2 dashboard-grid">
+   <div class="card"><div class="section-title"><div><h3>💰 أين يذهب الدخل؟</h3><span class="muted">ملخص توزيع الدورة</span></div></div>
+     ${flowBar("الأظرف",allocatedToEnvelopes,income,"🏠")}
+     ${flowBar("التحويش",savings,income,"🎯")}
+     ${flowBar("سداد الدين",paid,income,"💳")}
+     ${flowBar("الطوارئ",emergency,income,"🚨")}
+     <div class="flow-total"><span>إجمالي البنود الظاهرة</span><strong>${money(allocatedToEnvelopes+savings+paid+emergency)}</strong></div>
+   </div>
+   <div class="card"><div class="section-title"><div><h3>🎯 توزيع التحويش</h3><span class="muted">التحويش مستقل عن فوري</span></div><button class="btn btn-secondary btn-sm" onclick="showPage('savings')">إدارة</button></div>
+     ${savingsDonut(c)}
+   </div>
+ </div>`;
+
+ if(prev){
+   const pF=fawryForCycle(prev);
+   h+=`<div class="card"><div class="section-title"><div><h3>📊 مقارنة بالدورة السابقة</h3><span class="muted">${esc(cycleDisplayName(prev))}</span></div><button class="btn btn-secondary btn-sm" onclick="showPage('reports')">تحليل أوسع</button></div>
+     <div class="comparison-grid">
+       ${comparisonCell("الدخل",income,cycleIncome(prev))}
+       ${comparisonCell("المصروف الفعلي",actual,cycleActual(prev))}
+       ${comparisonCell("التحويش",savings,cycleSavings(prev))}
+       ${comparisonCell("رصيد فوري",f.close?.actualBalance??f.expected,pF.close?.actualBalance??pF.expected)}
+     </div>
+   </div>`;
+ }
+
+ h+=`<div class="grid-2 dashboard-grid">
+   <div class="card"><div class="section-title"><div><h3>🏠 الأظرف</h3><span class="muted">الفائض ${money(envelopeSurplus)} · العجز ${money(envelopeDeficit)}</span></div><button class="btn btn-secondary btn-sm" onclick="showPage('envelopes')">فتح الأظرف</button></div>${renderEnvelopeProgress(c)}</div>
+   <div class="card"><div class="section-title"><div><h3>🏦 فوري</h3><span class="muted">الحساب مستقل عن التحويش</span></div><button class="btn btn-secondary btn-sm" onclick="showPage('fawry')">فتح فوري</button></div>${renderFawryMini(c)}</div>
+ </div>`;
+
+ h+=`<div class="grid-2 dashboard-grid">
+   <div class="card"><div class="section-title"><div><h3>💳 الدين</h3><span class="muted">متبقي ${money(debt)}</span></div><button class="btn btn-secondary btn-sm" onclick="showPage('debt')">إدارة الدين</button></div>
+     <div class="debt-big">${money(debt)}</div><div class="muted">مدفوع ${money(paid)} من ${money(db.debt.original)}</div><div class="progress progress-lg" style="margin-top:12px"><span style="width:${pct}%"></span></div>
+   </div>
+   ${emergency?`<div class="card emergency-card"><div class="section-title"><div><h3>🚨 طوارئ الدورة</h3><span class="muted">لا تؤثر على الأظرف</span></div><strong>${money(emergency)}</strong></div>${(c.emergencies||[]).slice(0,4).map(x=>`<div class="list-row"><span>${esc(x.description)}</span><strong>${money(x.amount)}</strong></div>`).join("")}</div>`:`<div class="card calm-card"><h3>🟢 لا توجد مصروفات طارئة</h3><p class="muted">كل شيء هادئ في هذه الدورة.</p></div>`}
+ </div>`;
+
+ h+=`<div class="card annual-teaser"><div><h3>📈 تحليل السنة</h3><p class="muted">قارن البيت والبنزين والفواتير والتحويش شهرًا بشهر.</p></div><button class="btn btn-primary" onclick="showPage('reports')">فتح التحليل السنوي</button></div>`;
+
+ document.getElementById("page-dashboard").innerHTML=h;
+}
+function renderEnvelopeProgress(c){
+ if(!c.envelopes?.length)return `<div class="empty">لا توجد أظرف.</div>`;
+ return `<div class="mini-envelope-list">${c.envelopes.slice(0,8).map(e=>{
+   const a=envelopeActual(e), planned=Number(e.planned||0), used=a===null?0:a, pct=planned?Math.min(100,Math.max(0,used/planned*100)):0;
+   const delta=envelopeDelta(e);
+   return `<div class="mini-envelope"><div class="mini-envelope-head"><span>🏷️ ${esc(e.name)}</span><strong>${a===null?"—":money(a)}</strong></div><div class="progress"><span style="width:${pct}%"></span></div><div class="mini-envelope-foot"><small>مخطط ${money(planned)}</small><small class="${delta>=0?"money-positive":"money-negative"}">${a===null?"لم يدخل الفعلي":delta>=0?`فائض ${money(delta)}`:`عجز ${money(Math.abs(delta))}`}</small></div></div>`;
+ }).join("")}${c.envelopes.length>8?`<button class="btn btn-secondary btn-sm" onclick="showPage('envelopes')">عرض كل الأظرف</button>`:""}</div>`;
+}
+
+function comparisonCell(label,currentValue,previousValue){
+ const diff=Number(currentValue||0)-Number(previousValue||0);
+ return `<div class="comparison-cell"><span>${label}</span><strong>${money(currentValue)}</strong><small class="${diff>=0?"money-positive":"money-negative"}">${diff>=0?"+":""}${money(diff)} عن السابقة</small></div>`;
+}
+function selectCycle(id){if(cycleBy(id)){db.currentCycleId=id;save();render();showPage("dashboard");}}
+function renderEnvelopeMini(c){
+ if(!c.envelopes?.length)return `<div class="empty">لا توجد أظرف.</div>`;
+ return `<div class="table-wrap"><table class="table"><thead><tr><th>البند</th><th>المخطط</th><th>الفعلي</th><th>فائض/عجز</th></tr></thead><tbody>${c.envelopes.map(e=>`<tr><td>${esc(e.name)}</td><td>${money(e.planned)}</td><td>${envelopeActual(e)!==null?money(envelopeActual(e)):"—"}</td><td class="${envelopeDelta(e)>=0?"money-positive":"money-negative"}">${envelopeDelta(e)>=0?"+":""}${money(envelopeDelta(e))}</td></tr>`).join("")}</tbody></table></div>`;
+}
+function renderSavingsMini(c){
+ const methods=db.savingsMethods.filter(m=>allSavingsByMethod(m.id)>0);
+ if(!methods.length)return `<div class="empty">لا يوجد تحويش مسجل.</div>`;
+ return `<div class="list">${methods.map(m=>`<div class="list-row"><span>${esc(m.name)}</span><strong>${money(allSavingsByMethod(m.id))}</strong></div>`).join("")}</div>`;
+}
+function renderFawryMini(c){
+ const f=fawryForCycle(c);
+ return `<div class="list">
+ <div class="list-row"><span>رصيد بداية الدورة</span><strong>${money(c.fawryOpening||0)}</strong></div>
+ <div class="list-row"><span>الإيداعات</span><strong class="money-positive">+${money(f.deposits)}</strong></div>
+ <div class="list-row"><span>السحوبات</span><strong class="money-negative">-${money(f.withdrawals)}</strong></div>
+ <div class="list-row"><span>الفائدة</span><strong>${f.interest===null?"—":money(f.interest)}</strong></div>
+ </div>`;
+}
+
+function renderIncome(){
+ const c=current(); let h=pageHead("💵 مصادر الدخل","مكان واحد فقط لإضافة وتعديل وحذف الدخل",c&&!c.closed?`${c.approved?`<button class="btn btn-success btn-sm" onclick="openMidCycleIncome()">＋ إضافة دخل أثناء الدورة</button>`:`<button class="btn btn-primary btn-sm" onclick="openIncome()">＋ إضافة مصدر دخل</button>`}`:"");
+ if(!c){document.getElementById("page-income").innerHTML=h+noCycle();return}
+ const al=allocationStatus(c);
+ h+=`<div class="card" style="margin-bottom:18px;background:var(--surface2)"><div class="section-title"><h3>📌 توزيع الدخل</h3><strong class="${al.remaining>0?"money-negative":"money-positive"}">${al.remaining>0?`متبقي غير موزع ${money(al.remaining)}`:`تم توزيع الدخل بالكامل`}</strong></div><p class="muted">يتم اعتماد الدورة فقط عندما يساوي الدخل بالكامل: الأظرف + فوري + استثمار الذهب.</p><div class="list"><div class="list-row"><span>على الأظرف</span><strong>${money(cyclePlanned(c))}</strong></div><div class="list-row"><span>فوري</span><strong>${money(savingsByMethod(c,"fawry"))}</strong></div><div class="list-row"><span>استثمار الذهب</span><strong>${money(savingsByMethod(c,"gold_investment"))}</strong></div></div></div>`;
+ h+=`<div class="card"><div class="section-title"><h3>مصادر الدخل</h3><strong>${money(cycleIncome(c))}</strong></div>
+ <div class="table-wrap"><table class="table"><thead><tr><th>المصدر</th><th>المبلغ</th><th>إجراء</th></tr></thead><tbody>
+ ${(c.income||[]).map(x=>`<tr><td>${esc(x.name)}</td><td><strong>${money(x.amount)}</strong></td><td><button class="btn btn-secondary btn-sm" onclick="openIncome('${x.id}')">تعديل</button> <button class="btn btn-danger btn-sm" onclick="deleteIncome('${x.id}')">حذف</button></td></tr>`).join("")||`<tr><td colspan="3" class="empty">أضف أول مصدر دخل.</td></tr>`}
+ </tbody></table></div></div>`;
+ if(c.approved && !c.closed){
+   const mids=(c.income||[]).filter(x=>x.midCycle);
+   h+=`<div class="card" style="margin-top:18px"><div class="section-title"><h3>🕐 دخل أثناء الدورة</h3><span class="muted">مثل مرتب الزوجة يوم 20 أو 23</span></div>${mids.length?`<div class="list">${mids.map(x=>`<div class="list-row"><span>${esc(x.name)} — ${money(x.amount)}</span><span class="pill pill-success">تم تسجيله</span></div>`).join("")}</div>`:`<p class="muted">يمكن إضافة مرتب الزوجة أو أي دخل ينزل في منتصف الدورة وتوزيعه بالكامل.</p>`}</div>`;
+ }
+ document.getElementById("page-income").innerHTML=h;
+}
+
+function renderEnvelopes(){
+ const c=current();
+ let h=pageHead(
+   "🏠 الأظرف / بنود المصروفات",
+   "كل ظرف في كارت مستقل. افتح أي كارت لتسجيل مصروفاته بالتاريخ والوصف والمبلغ.",
+   c&&!c.closed?`<button class="btn btn-primary btn-sm" onclick="openEnvelope()">＋ إضافة بند</button>`:""
+ );
+ if(!c){document.getElementById("page-envelopes").innerHTML=h+noCycle();return}
+
+ const surplus=sum(c.envelopes.map(e=>Math.max(0,envelopeDelta(e))));
+ const deficit=sum(c.envelopes.map(e=>Math.max(0,-envelopeDelta(e))));
+
+ h+=`<div class="cards" style="grid-template-columns:repeat(4,1fr)">
+   ${metric("📋","المخطط",money(cyclePlanned(c)))}
+   ${metric("💵","مخصص إضافي للبيت",money(cycleEnvelopeAllocations(c)))}
+   ${metric("💸","الفعلي",money(cycleActual(c)))}
+   ${metric("💰","الفائض / العجز",money(surplus),`العجز ${money(deficit)}`)}
+ </div>`;
+
+ h+=`<div class="envelope-cards">`;
+
+ if(!c.envelopes.length){
+   h+=`<div class="card empty">لا توجد بنود. أضف أول ظرف من الزر بالأعلى.</div>`;
+ } else {
+   h+=c.envelopes.map(e=>{
+     const a=envelopeActual(e);
+     const d=envelopeDelta(e);
+     const count=(e.expenses||[]).length;
+     const remaining=a===null ? null : Number(e.planned||0)-Number(a||0);
+     return `<article class="card envelope-card">
+       <div class="envelope-card-head">
+         <div>
+           <div class="envelope-title">🏷️ ${esc(e.name)}</div>
+           <div class="muted">${count ? `🧾 ${count} مصروف مسجل` : "لم تُسجل مصروفات بعد"}</div>
+         </div>
+         <div class="envelope-status ${a===null?"status-pending":d>=0?"status-surplus":"status-deficit"}">
+           ${a===null?"لم يُدخل الفعلي":d>=0?`فائض ${money(d)}`:`عجز ${money(Math.abs(d))}`}
+         </div>
+       </div>
+
+       <div class="envelope-numbers">
+         <div><span>المخطط</span><strong>${money(e.planned)}</strong></div>
+         <div><span>المصروف الفعلي</span><strong>${a===null?"—":money(a)}</strong></div>
+         <div><span>${a===null?"المتاح":"المتبقي"}</span><strong>${a===null?"—":money(remaining)}</strong></div>
+       </div>
+
+       <div class="action-row envelope-actions">
+         ${!c.closed?`<button class="btn btn-primary" data-action="add-expense" data-envelope-id="${e.id}">＋ إضافة مصروف</button>`:""}
+         <button class="btn btn-secondary" onclick="openEnvelope('${e.id}')">تعديل الظرف</button>
+         ${!c.closed?`<button class="btn btn-danger" onclick="deleteEnvelope('${e.id}')">حذف</button>`:""}
+       </div>
+
+       ${count?`
+         <details class="expense-details">
+           <summary>🧾 عرض مصروفات ${esc(e.name)}</summary>
+           <div class="expense-list">
+             ${e.expenses.map(x=>`
+               <div class="expense-item">
+                 <div>
+                   <strong>${esc(x.description)}</strong>
+                   <div class="muted">${esc(x.date||"")}</div>
+                 </div>
+                 <div class="expense-item-right">
+                   <strong>${money(x.amount)}</strong>
+                   ${!c.closed?`<button class="btn btn-danger btn-sm" onclick="deleteExpense('${e.id}','${x.id}')">حذف</button>`:""}
+                 </div>
+               </div>
+             `).join("")}
+           </div>
+         </details>`:""}
+     </article>`;
+   }).join("");
+ }
+ h+=`</div>`;
+
+ h+=`<div class="card" style="margin-top:18px">
+   ${!c.closed
+     ? `<div class="action-row"><button class="btn btn-primary" onclick="closeCycle()">🔒 إغلاق الدورة</button></div>`
+     : `<div class="muted">هذه الدورة مغلقة ولا يمكن تعديلها.</div>`}
+ </div>`;
+
+ document.getElementById("page-envelopes").innerHTML=h;
+}
+function renderSavings(){
+ const c=current(); let h=pageHead("🎯 التحويش","التحويش مفهوم مستقل؛ فوري مجرد مكان من أماكن الاحتفاظ بالتحويش",c&&!c.closed?`<div class="action-row"><button class="btn btn-primary btn-sm" onclick="openSavings()">＋ تسجيل تحويش</button><button class="btn btn-secondary btn-sm" onclick="openSavings('gold_investment')">🪙 استثمار الذهب</button></div>`:"");
+ if(!c){document.getElementById("page-savings").innerHTML=h+noCycle();return}
+ h+=`<div class="cards" style="grid-template-columns:repeat(3,1fr)">${metric("🎯","إجمالي التحويش",money(cycleSavings(c)))}${metric("🏦","تحويش فوري",money(savingsByMethod(c,"fawry")))}${metric("🪙","تحويش خارج فوري",money(cycleSavings(c)-savingsByMethod(c,"fawry")))}</div>`;
+ h+=`<div class="grid-2"><div class="card"><div class="section-title"><h3>توزيع التحويش</h3><button class="btn btn-secondary btn-sm" onclick="openMethod()">＋ وسيلة جديدة</button></div>
+ <div class="list">${db.savingsMethods.map(m=>`<div class="list-row"><span>${esc(m.name)}</span><strong>${money(allSavingsByMethod(m.id))}</strong></div>`).join("")}</div></div>
+ <div class="card"><div class="section-title"><h3>عمليات تحويش هذه الدورة</h3></div>
+ <div class="table-wrap"><table class="table"><thead><tr><th>الوصف</th><th>المكان</th><th>المبلغ</th><th>التاريخ</th></tr></thead><tbody>
+ ${(c.savings||[]).map(x=>`<tr><td>${esc(x.description)}</td><td>${esc(db.savingsMethods.find(m=>m.id===x.methodId)?.name||"—")}</td><td>${money(x.amount)}</td><td>${esc(x.date)}</td></tr>`).join("")||`<tr><td colspan="4" class="empty">لا توجد عمليات.</td></tr>`}
+ </tbody></table></div></div></div>`;
+ document.getElementById("page-savings").innerHTML=h;
+}
+
+function renderFawry(){
+ const c=current(); let h=pageHead("🏦 فوري","حساب مستقل له Ledger خاص. معاملات فوري فقط تؤثر على رصيده",c&&!c.closed?`<button class="btn btn-primary btn-sm" onclick="openFawryDeposit()">＋ إيداع فوري</button><button class="btn btn-secondary btn-sm" onclick="openFawryWithdrawal()">➖ دفع من فوري</button><button class="btn btn-success btn-sm" onclick="openFawryClose()">🔢 إدخال رصيد النهاية</button>`:"");
+ if(!c){document.getElementById("page-fawry").innerHTML=h+noCycle();return}
+ const f=fawryForCycle(c), actual=f.close?.actualBalance;
+ h+=`<div class="cards" style="grid-template-columns:repeat(4,1fr)">
+ ${metric("↩️","رصيد البداية",money(c.fawryOpening||0))}
+ ${metric("➕","إيداعات فوري",money(f.deposits))}
+ ${metric("➖","سحوبات فوري",money(f.withdrawals))}
+ ${metric("🏦","الرصيد",money(actual??f.expected),actual===undefined?"مفترض":"فعلي")}
+ </div>`;
+ h+=`<div class="grid-2"><div class="card"><div class="section-title"><h3>حساب الدورة</h3></div>
+ <div class="list"><div class="list-row"><span>رصيد البداية</span><strong>${money(c.fawryOpening||0)}</strong></div><div class="list-row"><span>+ الإيداعات</span><strong class="money-positive">${money(f.deposits)}</strong></div><div class="list-row"><span>- السحوبات</span><strong class="money-negative">${money(f.withdrawals)}</strong></div><div class="list-row"><span>الرصيد المفترض</span><strong>${money(f.expected)}</strong></div><div class="list-row"><span>الرصيد الفعلي</span><strong>${actual===undefined?"لم يُدخل بعد":money(actual)}</strong></div><div class="list-row"><span>📈 الفائدة</span><strong>${f.interest===null?"لم تُحسب بعد":money(f.interest)}</strong></div></div>
+ <div class="muted" style="margin-top:12px">الفائدة = الرصيد الفعلي − (رصيد البداية + الإيداعات − السحوبات).</div></div>
+ <div class="card"><div class="section-title"><h3>Ledger فوري</h3></div><div class="table-wrap"><table class="table"><thead><tr><th>النوع</th><th>الوصف</th><th>المبلغ</th><th>التاريخ</th></tr></thead><tbody>
+ ${f.tx.map(x=>`<tr><td><span class="pill ${x.type==="deposit"?"pill-success":"pill-danger"}">${x.type==="deposit"?"إيداع":"سحب"}</span></td><td>${esc(x.description)}</td><td>${money(x.amount)}</td><td>${esc(x.date)}</td></tr>`).join("")||`<tr><td colspan="4" class="empty">لا توجد معاملات فوري.</td></tr>`}
+ </tbody></table></div></div></div>`;
+ document.getElementById("page-fawry").innerHTML=h;
+}
+
+function cycleEmergencies(c){return c?.emergencies||[]}
+function renderEmergencies(c){
+ const items=cycleEmergencies(c);
+ return `<div class="card" style="margin-top:18px"><div class="section-title"><h3>🚨 مصاريف طارئة</h3><button class="btn btn-secondary btn-sm" onclick="openEmergency()">＋ إضافة طارئ</button></div>
+ <p class="muted">مثل صيانة عربية أو كشف طبي. لا تخصم من أي ظرف؛ وإذا اخترت فوري فهي سحبة مستقلة من فوري.</p>
+ ${items.length?`<div class="table-wrap"><table class="table"><thead><tr><th>الوصف</th><th>المبلغ</th><th>من</th><th>التاريخ</th></tr></thead><tbody>${items.map(x=>`<tr><td>${esc(x.description)}</td><td>${money(x.amount)}</td><td>${esc(x.source)}</td><td>${esc(x.date)}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">لا توجد مصاريف طارئة.</div>`}</div>`;
+}
+function openEmergency(){
+ const c=current(); if(!c||c.closed){alert("لا توجد دورة مفتوحة.");return}
+ modal("🚨 إضافة مصروف طارئ",`<div class="form-grid"><div class="form-group full"><label>الوصف</label><input name="description" placeholder="صيانة عربية / كشف طبي" required></div><div class="form-group"><label>المبلغ</label><input name="amount" type="number" min=".01" step=".01" required></div><div class="form-group"><label>الدفع من</label><select name="source"><option value="fawry">فوري</option><option value="other">نقدي / مصدر آخر</option></select></div><div class="form-group"><label>التاريخ</label><input name="date" type="date" value="${today()}"></div></div>`,d=>{
+   const amount=num(d.get("amount")), source=d.get("source"), date=d.get("date")||today(), description=d.get("description");
+   if(source==="fawry" && amount>fawryForCycle(c).expected+0.005){alert("المبلغ أكبر من رصيد فوري المتاح.");return}
+   c.emergencies ||= [];
+   c.emergencies.push({id:uid(),description,amount,source:source==="fawry"?"فوري":"نقدي / مصدر آخر",date});
+   if(source==="fawry"){db.fawry.transactions.push({id:uid(),cycleId:c.id,type:"withdrawal",amount,description:`طوارئ: ${description}`,date});addTransaction({cycleId:c.id,type:"مصروف طارئ",description,amount,account:"فوري"});}
+   else addTransaction({cycleId:c.id,type:"مصروف طارئ",description,amount,account:"نقدي / مصدر آخر"});
+   save();closeModal();render();toast("تم تسجيل المصروف الطارئ.");
+ });
+}
+function renderDebt(){
+ let h=pageHead("💳 الدين","الدين مستقل عن الدورات ولا يتصفر عند بدء دورة جديدة",`<button class="btn btn-primary btn-sm" onclick="openDebtPayment()">＋ تسجيل سداد</button><button class="btn btn-secondary btn-sm" onclick="openDebtSetup()">⚙️ إجمالي الدين</button>`);
+ const paid=debtPaid(), rem=debtRemaining(), pct=db.debt.original?Math.min(100,paid/db.debt.original*100):0;
+ h+=`<div class="cards" style="grid-template-columns:repeat(3,1fr)">${metric("💳","إجمالي الدين",money(db.debt.original))}${metric("✅","إجمالي المدفوع",money(paid))}${metric("📌","المتبقي",money(rem))}</div>
+ <div class="card"><div class="section-title"><h3>نسبة السداد</h3><strong>${pct.toFixed(1)}%</strong></div><div class="progress"><span style="width:${pct}%"></span></div>
+ <div class="section-title" style="margin-top:22px"><h3>سجل الدفعات</h3></div>
+ <div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>الدورة</th><th>الوصف</th><th>المبلغ</th></tr></thead><tbody>
+ ${db.debt.payments.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(cycleName(cycleBy(x.cycleId)))}</td><td>${esc(x.description)}</td><td>${money(x.amount)}</td></tr>`).join("")||`<tr><td colspan="4" class="empty">لا توجد دفعات.</td></tr>`}
+ </tbody></table></div></div>`;
+ document.getElementById("page-debt").innerHTML=h;
+}
+
+function renderTransactions(){
+ let h=pageHead("🧾 سجل العمليات","كل العمليات المالية المسجلة محليًا",`<button class="btn btn-secondary btn-sm" onclick="render()">↻ تحديث</button>`);
+ h+=`<div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>الدورة</th><th>النوع</th><th>الوصف</th><th>المبلغ</th><th>الحساب/الوسيلة</th></tr></thead><tbody>
+ ${db.transactions.map(t=>`<tr><td>${esc(t.date)}</td><td>${esc(cycleName(cycleBy(t.cycleId)))}</td><td><span class="pill pill-blue">${esc(t.type)}</span></td><td>${esc(t.description)}</td><td>${money(t.amount)}</td><td>${esc(t.account||"—")}</td></tr>`).join("")||`<tr><td colspan="6" class="empty">لا توجد عمليات بعد.</td></tr>`}
+ </tbody></table></div></div>`;
+ document.getElementById("page-transactions").innerHTML=h;
+}
+
+function renderReports(){
+ let h=pageHead("📈 التحليل والتقارير","مقارنة الدورات والشهور مع تقرير مالي واضح",`<button class="btn btn-primary btn-sm" onclick="buildReport()">تحديث التقرير</button><button class="btn btn-secondary btn-sm" onclick="exportPDF()">📄 PDF</button>`);
+ h+=`<div class="card report-controls"><div class="form-grid">
+ <div class="form-group"><label>نوع التقرير</label><select id="reportType"><option value="year">سنة كاملة</option><option value="cycle">دورة معينة</option><option value="multi">عدة دورات</option></select></div>
+ <div class="form-group"><label>الدورة</label><select id="reportCycle"><option value="">اختر دورة</option>${db.cycles.map(c=>`<option value="${c.id}" ${c.id===db.currentCycleId?"selected":""}>${esc(cycleName(c))}</option>`).join("")}</select></div>
+ <div class="form-group"><label>السنة</label><input id="reportYear" type="number" value="${new Date().getFullYear()}"></div>
+ <div class="form-group"><label>بند المقارنة السنوية</label><select id="annualCategory"><option value="البيت">🏠 البيت</option><option value="البنزين">⛽ البنزين</option><option value="الفواتير">🧾 الفواتير</option><option value="التحويش">🎯 التحويش</option><option value="الدخل">💵 الدخل</option><option value="الطوارئ">🚨 الطوارئ</option></select></div>
+ </div></div>
+ <div id="reportOutput" style="margin-top:18px"></div>`;
+ document.getElementById("page-reports").innerHTML=h;
+ const rt=document.getElementById("reportType"), rc=document.getElementById("reportCycle");
+ rt.addEventListener("change",()=>{rc.multiple=rt.value==="multi";rc.size=rt.value==="multi"?Math.min(6,Math.max(3,db.cycles.length)):1;});
+ document.getElementById("annualCategory").addEventListener("change",buildReport);
+ buildReport();
+}
+function annualValues(category,year){
+ const months=["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+ return months.map((m,i)=>{
+   const cs=db.cycles.filter(c=>{
+     const d=new Date((c.startDate||"1900-01-01")+"T12:00:00");
+     return d.getFullYear()===year && d.getMonth()===i;
+   });
+   if(category==="الدخل") return sum(cs.map(c=>cycleIncome(c)));
+   if(category==="التحويش") return sum(cs.map(c=>cycleSavings(c)));
+   if(category==="الطوارئ") return sum(cs.map(c=>sum((c.emergencies||[]).map(x=>x.amount))));
+   return sum(cs.map(c=>sum((c.envelopes||[]).filter(e=>e.name===category).map(e=>envelopeActual(e)??0))));
+ });
+}
+function renderAnnualTable(category,year){
+ const months=["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+ const vals=annualValues(category,year), total=sum(vals), max=Math.max(...vals,0), minNonZero=Math.min(...vals.filter(x=>x>0),0)||0;
+ const avg=vals.filter(x=>x>0).length?total/vals.filter(x=>x>0).length:0;
+ return `<div class="card"><div class="section-title"><div><h3>📊 ${esc(category)} — ${year}</h3><span class="muted">مقارنة شهرية</span></div><div class="annual-summary"><span>الإجمالي <strong>${money(total)}</strong></span><span>المتوسط <strong>${money(avg)}</strong></span><span>الأعلى <strong>${money(max)}</strong></span></div></div>
+ <div class="annual-bars">${vals.map((v,i)=>`<div class="annual-bar-col"><strong>${v?money(v):"—"}</strong><div class="annual-bar" style="height:${max?Math.max(4,v/max*150):4}px"></div><small>${months[i]}</small></div>`).join("")}</div>
+ <div class="table-wrap" style="margin-top:16px"><table class="table"><thead><tr><th>الشهر</th>${months.map(m=>`<th>${m}</th>`).join("")}<th>الإجمالي</th></tr></thead><tbody><tr><td>${esc(category)}</td>${vals.map(v=>`<td>${money(v)}</td>`).join("")}<td><strong>${money(total)}</strong></td></tr></tbody></table></div></div>`;
+}
+function buildReport(){
+ const type=document.getElementById("reportType").value, rc=document.getElementById("reportCycle"), ids=[...rc.selectedOptions].map(o=>o.value).filter(Boolean), year=Number(document.getElementById("reportYear").value), category=document.getElementById("annualCategory").value;
+ let cs=type==="cycle"?(ids[0]&&cycleBy(ids[0])?[cycleBy(ids[0])]:[]):type==="year"?db.cycles.filter(c=>String(new Date((c.startDate||"1900-01-01")+"T12:00:00").getFullYear())===String(year)):db.cycles.filter(c=>ids.includes(c.id));
+ const income=sum(cs.map(cycleIncome)), actual=sum(cs.map(cycleActual)), savings=sum(cs.map(cycleSavings));
+ const fdeps=sum(cs.map(c=>fawryForCycle(c).deposits)), fwith=sum(cs.map(c=>fawryForCycle(c).withdrawals)), interest=sum(cs.map(c=>fawryForCycle(c).interest??0));
+ const emergency=sum(cs.map(c=>sum((c.emergencies||[]).map(x=>x.amount))));
+ const debtInPeriod=sum(db.debt.payments.filter(p=>cs.some(c=>c.id===p.cycleId)).map(p=>p.amount));
+ const methodTotals=db.savingsMethods.map(m=>({name:m.name,value:sum(cs.map(c=>savingsByMethod(c,m.id)))})).filter(x=>x.value);
+ let h=`<div class="cards report-kpis">${metric("💵","الدخل",money(income))}${metric("💸","المصروف",money(actual))}${metric("🎯","التحويش",money(savings))}${metric("🚨","الطوارئ",money(emergency))}${metric("🏦","إيداعات فوري",money(fdeps))}${metric("➖","سحوبات فوري",money(fwith))}${metric("📈","فوائد فوري",money(interest))}${metric("💳","سداد الدين",money(debtInPeriod))}</div>`;
+ h+=renderAnnualTable(category,year);
+ h+=`<div class="grid-2" style="margin-top:18px"><div class="card"><h3>🎯 توزيع التحويش</h3><div class="list">${methodTotals.map(x=>`<div class="list-row"><span>${esc(x.name)}</span><strong>${money(x.value)}</strong></div>`).join("")||"<div class='empty'>لا يوجد تحويش.</div>"}</div></div><div class="card"><h3>📅 الدورات المشمولة</h3><div class="list">${cs.map(c=>`<div class="list-row"><span>${esc(cycleName(c))}</span><span class="muted">${esc(c.startDate||"")}${c.endDate?" → "+esc(c.endDate):""}</span></div>`).join("")||"<div class='empty'>لا توجد دورات.</div>"}</div></div></div>`;
+ document.getElementById("reportOutput").innerHTML=h;
+}
+
+function renderBackup(){
+ document.getElementById("page-backup").innerHTML=pageHead("📦 Backup / Restore","كل شيء محفوظ محليًا في LocalStorage",`<button class="btn btn-primary btn-sm" onclick="exportBackup()">📦 Export Backup</button> <button class="btn btn-secondary btn-sm" onclick="document.getElementById('restoreFile').click()">♻️ Restore Backup</button> <button class="btn btn-secondary btn-sm" onclick="exportPDF()">📄 تصدير PDF</button> <button class="btn btn-danger btn-sm" onclick="clearAllData()">🗑️ مسح كل البيانات</button>`) + `
+ <div class="grid-2"><div class="card"><h3>النسخ الاحتياطي</h3><p class="muted">يحتوي الملف على الدورات والأظرف والدخل والتحويش وفوري والفوائد والدين وسجل العمليات ووسائل التحويش.</p><button class="btn btn-primary" onclick="exportBackup()">تحميل نسخة احتياطية</button></div>
+ <div class="card"><h3>استعادة البيانات</h3><p class="muted">اختر ملف JSON تم تصديره من التطبيق. سيتم استبدال البيانات الحالية بعد التأكيد.</p><button class="btn btn-secondary" onclick="document.getElementById('restoreFile').click()">اختيار ملف</button></div></div>
+ <input id="restoreFile" type="file" accept=".json,application/json" hidden onchange="restoreBackup(this.files[0])">
+ <div class="card" style="margin-top:18px;border-color:var(--danger)"><h3>⚠️ منطقة خطرة</h3><p class="muted">مسح كل البيانات يحذف الدورات والدخل والتحويش وفوري والدين وسجل العمليات من هذا الجهاز نهائيًا.</p><button class="btn btn-danger" onclick="clearAllData()">🗑️ مسح كل البيانات</button></div><div class="card" style="margin-top:18px"><h3>إحصائيات التخزين</h3><div class="kpi-row"><div class="kpi"><span>الدورات</span><strong>${db.cycles.length}</strong></div><div class="kpi"><span>العمليات</span><strong>${db.transactions.length}</strong></div><div class="kpi"><span>وسائل التحويش</span><strong>${db.savingsMethods.length}</strong></div></div></div>`;
+}
+
+function modal(title,body,onSubmit){
+ document.getElementById("modalRoot").innerHTML=`<div class="modal-backdrop" id="modalBackdrop"><div class="modal"><button class="close" onclick="closeModal()">×</button><h3>${title}</h3><form id="modalForm">${body}<div class="modal-actions"><button class="btn btn-primary" type="submit">حفظ</button><button class="btn btn-secondary" type="button" onclick="closeModal()">إلغاء</button></div></form></div></div>`;
+ document.getElementById("modalForm").onsubmit=e=>{e.preventDefault();onSubmit(new FormData(e.target));};
+}
+function closeModal(){document.getElementById("modalRoot").innerHTML=""}
+
+function openNewCycle(){
+ const prev=activeOrLatest();
+ if(prev && !prev.closed && !prev.approved){alert("لا يمكن بدء دورة جديدة قبل اعتماد الدورة الحالية.");return}
+ if(prev){
+   const al=allocationStatus(prev);
+   if(al.remaining>0.005){
+     if(!confirm(`⚠️ يوجد ${money(al.remaining)} من دخل الدورة السابقة لم يتم توزيعه.\n\nيجب توزيع الدخل على الأظرف أو فوري أو استثمار الذهب.\n\nهل تريد بدء دورة جديدة رغم ذلك؟`)) return;
+   }
+ }
+ modal("🟢 بدء دورة مالية جديدة",`<div class="form-grid">
+ <div class="form-group"><label>اسم الدورة</label><input name="name" value="${prev?esc(monthLabel(new Date((prev.startDate||today())+"T12:00:00"))):""}" placeholder="مثال: أغسطس 2026" required></div>
+ <div class="form-group"><label>تاريخ بداية الدورة</label><input name="startDate" type="date" value="${today()}" required></div>
+ <div class="form-group full"><label>رصيد بداية فوري</label><input name="fawryOpening" type="number" min="0" step="0.01" value="${prev?fawryForCycle(prev).close?.actualBalance ?? fawryForCycle(prev).expected:0}" required><small class="muted">ينتقل من الرصيد الفعلي/المفترض للدورة السابقة.</small></div>
+ </div>
+ ${prev?`<div class="card" style="margin-top:14px;background:var(--surface2)"><strong>📋 بنود الدورة السابقة ستظهر كمقترحات بعد الإنشاء.</strong><p class="muted">لن يتم اعتمادها إلا بعد مراجعتها والضغط على "اعتماد الدورة الجديدة".</p></div>`:""}`,d=>{
+   const c={id:uid(),name:d.get("name"),startDate:d.get("startDate"),endDate:null,closed:false,approved:false,income:prev?prev.income.map(x=>({id:uid(),name:x.name,amount:x.midCycle?0:x.amount,midCycle:false,proposed:true})):[],incomeAllocations:[],envelopes:prev?prev.envelopes.map(e=>({id:uid(),name:e.name,planned:e.planned,actual:null,actualEntered:false,expenses:[],proposed:true})):[],savings:[],fawryOpening:num(d.get("fawryOpening"))};
+   db.cycles.push(c);db.currentCycleId=c.id;save();closeModal();render();showPage("income");toast("تم إنشاء الدورة. راجع البنود ثم اعتمدها.");
+ });
+}
+function openIncome(id){
+ const c=current(), x=(c.income||[]).find(x=>x.id===id);
+ modal(id?"تعديل مصدر الدخل":"إضافة مصدر دخل",`<div class="form-grid"><div class="form-group"><label>المصدر</label><input name="name" value="${esc(x?.name||"")}" placeholder="المرتب" required></div><div class="form-group"><label>المبلغ</label><input name="amount" type="number" min="0" step=".01" value="${x?.amount??""}" required></div></div>`,d=>{
+   if(id){x.name=d.get("name");x.amount=num(d.get("amount"));c.approved=false}else{const n={id:uid(),name:d.get("name"),amount:num(d.get("amount"))};c.income.push(n);addTransaction({cycleId:c.id,type:"دخل",description:n.name,amount:n.amount,account:"مصادر الدخل"});}
+   save();closeModal();render();toast("تم حفظ الدخل.");
+ });
+}
+function deleteIncome(id){if(confirm("حذف مصدر الدخل؟")){const c=current();c.income=c.income.filter(x=>x.id!==id);save();render();}}
+function openMidCycleIncome(){
+ const c=current(); if(!c||c.closed){alert("لا توجد دورة مفتوحة.");return}
+ const envelopeOptions=(c.envelopes||[]).map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join("");
+ modal("＋ إضافة دخل أثناء الدورة",`<div class="form-grid">
+ <div class="form-group"><label>مصدر الدخل</label><input name="name" value="مرتب الزوجة" required></div>
+ <div class="form-group"><label>المبلغ</label><input name="amount" type="number" min=".01" step=".01" required></div>
+ <div class="form-group full"><label>تاريخ نزول الدخل</label><input name="date" type="date" value="${today()}"></div>
+ </div>
+ <div class="card" style="margin-top:14px;background:var(--surface2)"><strong>وزّع الدخل فورًا</strong><p class="muted">يمكن وضع كله في فوري، أو تقسيمه بين فوري ومصروف البيت واستثمار الذهب.</p></div>
+ <div class="form-grid">
+ <div class="form-group"><label>إلى فوري</label><input name="fawry" type="number" min="0" step=".01" value="0"></div>
+ <div class="form-group"><label>إلى استثمار الذهب</label><input name="gold" type="number" min="0" step=".01" value="0"></div>
+ <div class="form-group"><label>إلى ظرف البيت</label><select name="envelope">${envelopeOptions}</select></div>
+ <div class="form-group"><label>مبلغ الظرف</label><input name="envelopeAmount" type="number" min="0" step=".01" value="0"></div>
+ </div>`,d=>{
+   const amount=num(d.get("amount")), f=num(d.get("fawry")), g=num(d.get("gold")), ea=num(d.get("envelopeAmount"));
+   if(Math.abs(f+g+ea-amount)>0.005){alert(`يجب توزيع كامل الدخل. المتبقي: ${money(amount-f-g-ea)}`);return}
+   const date=d.get("date")||today(), name=d.get("name")||"دخل إضافي";
+   const income={id:uid(),name,amount,date,midCycle:true}; c.income.push(income);
+   if(f>0){c.savings.push({id:uid(),methodId:"fawry",amount:f,description:`${name} → فوري`,date});addFawryDepositInternal(c,f,`${name} → فوري`,date,false);}
+   if(g>0){c.savings.push({id:uid(),methodId:"gold_investment",amount:g,description:`${name} → استثمار الذهب`,date});addTransaction({cycleId:c.id,type:"تحويش",description:`${name} → استثمار الذهب`,amount:g,account:"استثمار الذهب"});}
+   if(ea>0){c.incomeAllocations.push({id:uid(),incomeId:income.id,targetType:"envelope",targetId:d.get("envelope"),amount:ea,date});addTransaction({cycleId:c.id,type:"تخصيص دخل",description:`${name} → ظرف`,amount:ea,account:(c.envelopes.find(e=>e.id===d.get("envelope"))?.name||"ظرف")});}
+   addTransaction({cycleId:c.id,type:"دخل أثناء الدورة",description:name,amount,account:"مصادر الدخل"});
+   save();closeModal();render();toast("تم تسجيل دخل منتصف الدورة وتوزيعه بالكامل.");
+ });
+}
+function openEnvelope(id){
+ const c=current(), x=(c.envelopes||[]).find(x=>x.id===id);
+ const allowActual=!!c.approved, hasExpenses=(x?.expenses||[]).length>0;
+ const actualValue=x && actualIsEntered(x) ? x.actual : "";
+ const actualField=allowActual && !hasExpenses
+   ? `<div class="form-group"><label>المبلغ الفعلي <span class="muted">(إذا لم تسجل مصروفات)</span></label><input name="actual" type="number" min="0" step=".01" value="${actualValue}" placeholder="مثال: 3700"></div>`
+   : hasExpenses
+   ? `<div class="card" style="grid-column:1/-1;background:var(--surface2)"><strong>🧾 الفعلي محسوب تلقائيًا</strong><p class="muted" style="margin:6px 0 0">يوجد ${x.expenses.length} مصروف مسجل لهذا الظرف بإجمالي <strong>${money(envelopeActual(x))}</strong>.</p></div>`
+   : `<input type="hidden" name="actual" value=""><div class="card" style="grid-column:1/-1;background:var(--surface2)"><strong>📅 بداية الدورة</strong><p class="muted" style="margin:6px 0 0">أدخل المبلغ المخطط فقط الآن. يمكنك لاحقًا تسجيل كل مصروف بالتاريخ، أو إدخال الفعلي يدويًا في نهاية الدورة إذا لم تسجل مصروفات.</p></div>`;
+ modal(id?"تعديل بند":"إضافة بند",`<div class="form-grid"><div class="form-group full"><label>اسم البند</label><input name="name" value="${esc(x?.name||"")}" placeholder="مصاريف البيت" required></div><div class="form-group"><label>المبلغ المخطط</label><input name="planned" type="number" min="0" step=".01" value="${x?.planned??""}" required></div>${actualField}</div>`,d=>{
+   const newName=d.get("name"), newPlanned=num(d.get("planned")), actualRaw=(d.get("actual")||"").trim(), hasActual=actualRaw!=="";
+   if(id){
+     const plannedChanged=Math.abs(Number(x.planned||0)-newPlanned)>0.005;
+     x.name=newName; x.planned=newPlanned;
+     if(!hasExpenses && allowActual && hasActual){x.actual=num(actualRaw);x.actualEntered=true;}
+     else if(!hasExpenses && !actualIsEntered(x)){x.actual=null;x.actualEntered=false;}
+     delete x.proposed; if(plannedChanged) c.approved=false;
+   } else c.envelopes.push({id:uid(),name:newName,planned:newPlanned,actual:allowActual&&hasActual?num(actualRaw):null,actualEntered:allowActual&&hasActual,expenses:[]});
+   save();closeModal();render();toast("تم حفظ البند.");
+ });
+}
+function openExpense(envelopeId){
+ const c=current(), e=(c?.envelopes||[]).find(x=>x.id===envelopeId); if(!c||!e||c.closed)return;
+ modal(`🧾 تسجيل مصروف — ${esc(e.name)}`,`<div class="form-grid"><div class="form-group"><label>التاريخ</label><input name="date" type="date" value="${today()}" required></div><div class="form-group"><label>المبلغ</label><input name="amount" type="number" min=".01" step=".01" placeholder="850" required></div><div class="form-group full"><label>الوصف</label><input name="description" placeholder="فولت بنزين" required></div></div><div class="form-note">سيتم جمع كل مصروفات هذا الظرف تلقائيًا وحساب الفعلي منها. مثال: 850 + 600 = الفعلي 1450.</div>`,d=>{
+   const amount=num(d.get("amount")), date=d.get("date")||today(), description=(d.get("description")||"").trim();
+   if(!amount || !description){alert("أدخل المبلغ والوصف.");return}
+   e.expenses ||= []; e.expenses.push({id:uid(),amount,date,description}); e.actual=null; e.actualEntered=false;
+   save();closeModal();render();toast(`تم تسجيل مصروف ${money(amount)} في ${e.name}.`);
+ });
+}
+function deleteExpense(envelopeId,expenseId){
+ const c=current(), e=(c?.envelopes||[]).find(x=>x.id===envelopeId); if(!e||c.closed)return;
+ if(!confirm("حذف هذا المصروف؟"))return;
+ e.expenses=(e.expenses||[]).filter(x=>x.id!==expenseId); if(e.expenses.length){e.actual=null;e.actualEntered=false;}
+ save();render();toast("تم حذف المصروف.");
+}
+function deleteEnvelope(id){if(confirm("حذف البند؟")){const c=current();c.envelopes=c.envelopes.filter(x=>x.id!==id);save();render();}}
+function openSavings(preselected=""){
+ const c=current();
+ modal("🎯 تسجيل تحويش",`<div class="form-grid"><div class="form-group full"><label>مكان التحويش</label><select name="method">${db.savingsMethods.map(m=>`<option value="${m.id}" ${m.id===preselected?"selected":""}>${esc(m.name)}</option>`).join("")}</select></div><div class="form-group"><label>المبلغ</label><input name="amount" type="number" min="0.01" step=".01" required></div><div class="form-group"><label>التاريخ</label><input name="date" type="date" value="${today()}"></div><div class="form-group full"><label>الوصف</label><input name="description" placeholder="شراء ذهب / إيداع فوري / جمعية" required></div></div>`,d=>{
+   const method=d.get("method"), amount=num(d.get("amount")), desc=d.get("description"), date=d.get("date")||today();
+   c.savings.push({id:uid(),methodId:method,amount,description:desc,date});
+   c.approved=false;
+   addTransaction({cycleId:c.id,type:"تحويش",description:desc,amount,account:db.savingsMethods.find(m=>m.id===method)?.name});
+   if(method==="fawry") addFawryDepositInternal(c,amount,desc,date,false);
+   save();closeModal();render();toast("تم تسجيل التحويش. فوري يتأثر فقط لأن المكان هو فوري.");
+ });
+}
+function openMethod(){
+ modal("＋ إضافة وسيلة تحويش جديدة",`<div class="form-group"><label>اسم الوسيلة</label><input name="name" placeholder="مثال: محفظة أخرى" required></div>`,d=>{
+   db.savingsMethods.push({id:uid(),name:d.get("name"),system:false});save();closeModal();render();toast("تمت إضافة وسيلة التحويش.");
+ });
+}
+function addFawryDepositInternal(c,amount,desc,date,makeSaving){
+ db.fawry.transactions.push({id:uid(),cycleId:c.id,type:"deposit",amount,description:desc,date});
+ addTransaction({cycleId:c.id,type:"إيداع فوري",description:desc,amount,account:"فوري"});
+ if(makeSaving)c.savings.push({id:uid(),methodId:"fawry",amount,description:desc,date});
+}
+function openFawryDeposit(){
+ const c=current();
+ modal("＋ إيداع فوري / تحويش فوري",`<div class="form-grid"><div class="form-group"><label>المبلغ</label><input name="amount" type="number" min=".01" step=".01" required></div><div class="form-group"><label>التاريخ</label><input name="date" type="date" value="${today()}"></div><div class="form-group full"><label>الوصف</label><input name="description" placeholder="تحويش فوري" required></div></div><p class="muted">هذا الإيداع يُسجل كتحويش في فوري، ويزيد رصيد فوري بنفس المبلغ.</p>`,d=>{
+   const amount=num(d.get("amount")), desc=d.get("description"), date=d.get("date")||today();
+   c.savings.push({id:uid(),methodId:"fawry",amount,description:desc,date});
+   c.approved=false;
+   addFawryDepositInternal(c,amount,desc,date,false);
+   save();closeModal();render();toast("تم إيداع وتحويش المبلغ في فوري.");
+ });
+}
+function openFawryWithdrawal(){
+ const c=current();
+ modal("➖ دفع من فوري",`<div class="form-grid"><div class="form-group"><label>المبلغ</label><input name="amount" type="number" min=".01" step=".01" required></div><div class="form-group"><label>التاريخ</label><input name="date" type="date" value="${today()}"></div><div class="form-group full"><label>الوصف</label><input name="description" placeholder="فاتورة كهرباء" required></div></div><p class="muted">السحب من فوري لا يخصم من أي ظرف مصروفات.</p>`,d=>{
+   const amount=num(d.get("amount")), desc=d.get("description"), date=d.get("date")||today();
+   const f=fawryForCycle(c); if(amount>f.expected){alert("المبلغ أكبر من الرصيد المفترض لفوري.");return}
+   db.fawry.transactions.push({id:uid(),cycleId:c.id,type:"withdrawal",amount,description:desc,date});
+   addTransaction({cycleId:c.id,type:"سحب فوري",description:desc,amount,account:"فوري"});
+   save();closeModal();render();toast("تم تسجيل السحب من فوري فقط.");
+ });
+}
+function openFawryClose(){
+ const c=current(), f=fawryForCycle(c);
+ modal("🔢 رصيد فوري الفعلي في نهاية الدورة",`<div class="form-grid"><div class="form-group full"><label>الرصيد الفعلي الموجود في فوري</label><input name="actual" type="number" min="0" step=".01" value="${f.close?.actualBalance??f.expected}" required></div></div><div class="card" style="margin-top:12px;background:var(--surface2)">الرصيد المفترض حاليًا: <strong>${money(f.expected)}</strong><br>الفائدة = الرصيد الفعلي − الرصيد المفترض.</div>`,d=>{
+   const actual=num(d.get("actual")), old=f.close;
+   if(old){old.actualBalance=actual;old.date=today()}else db.fawry.closings.push({id:uid(),cycleId:c.id,actualBalance:actual,date:today()});
+   const interest=actual-f.expected;
+   addTransaction({cycleId:c.id,type:"فائدة فوري",description:"فائدة محسوبة من رصيد النهاية",amount:interest,account:"فوري"});
+   save();closeModal();render();toast(`تم الحساب: الفائدة ${money(interest)}`);
+ });
+}
+function approveCycle(){
+ const c=current(); if(!c||c.closed)return;
+ const al=allocationStatus(c);
+ if(al.income<=0.005){alert("أدخل إجمالي الدخل أولًا قبل اعتماد الدورة.");return}
+ if(al.remaining>0.005){alert(`لا يمكن اعتماد الدورة. يوجد ${money(al.remaining)} غير موزع من الدخل.\nوزّع المبلغ على الأظرف أو فوري أو استثمار الذهب.`);return}
+ if(al.over>0.005){alert(`التوزيع أكبر من الدخل بمقدار ${money(al.over)}. راجع المبالغ قبل الاعتماد.`);return}
+ c.approved=true; c.envelopes.forEach(e=>delete e.proposed); save(); render(); toast("تم اعتماد الدورة الجديدة بالكامل.");
+}
+function closeCycle(){
+ const c=current(); if(!c){alert("لا توجد دورة مالية نشطة لإغلاقها.");return} if(c.closed)return; if(!c.approved){alert("اعتمد الدورة الجديدة أولًا.");return;}
+ const missing=(c.envelopes||[]).filter(e=>envelopeActual(e)===null);
+ if(missing.length){
+   alert(`⚠️ لا يمكن إغلاق الدورة قبل إدخال المصروف الفعلي لكل الأظرف.\n\nالمتبقي: ${missing.map(e=>e.name).join("، ")}\n\nإذا لم يُصرف شيء في أي ظرف، اكتب 0.`);
+   showPage("envelopes");
+   setTimeout(()=>openEnvelope(missing[0].id),80);
+   return;
+ }
+ const surplus=sum(c.envelopes.map(e=>Math.max(0,envelopeDelta(e))));
+ const deficit=sum(c.envelopes.map(e=>Math.max(0,-envelopeDelta(e))));
+ // فائض وعجز الأظرف يتقابلان أولًا. لا يتم تحويش الفائض وسحب العجز معًا.
+ const net=surplus-deficit;
+ const f=fawryForCycle(c);
+ const netLabel=net>0?"صافي الفائض بعد خصم العجز":net<0?"العجز المتبقي بعد خصم الفائض":"لا يوجد مبلغ مستحق بعد المقاصة";
+ modal("🔒 إغلاق الدورة",`
+   <div class="grid-2">
+     <div class="card" style="background:var(--surface2)"><strong>💰 إجمالي الفائض = ${money(surplus)}</strong><p class="muted">قبل مقاصة العجز.</p></div>
+     <div class="card" style="background:var(--surface2)"><strong>⚠️ إجمالي العجز = ${money(deficit)}</strong><p class="muted">قبل مقاصة الفائض.</p></div>
+   </div>
+   <div class="card" style="margin-top:14px;background:var(--surface2)">
+     <strong>⚖️ ${netLabel}: ${money(Math.abs(net))}</strong>
+     <p class="muted">الفائض والعجز يتم طرحهما من بعض أولًا. ${net>0?"سيتم توزيع صافي الفائض فقط.":net<0?"سيتم سحب العجز المتبقي فقط من فوري.":"لن يتم توزيع فائض ولن يتم سحب أي مبلغ من فوري."}</p>
+   </div>
+   ${net>0?`<div id="surplusRows" style="margin-top:12px"></div>
+   <button type="button" class="btn btn-secondary btn-sm" onclick="addSurplusRow()">＋ إضافة توزيع لصافي الفائض</button>
+   <div id="surplusTotal" class="muted" style="margin-top:8px">الموزع: 0 ج.م</div>`:""}
+   <div class="card" style="margin-top:14px;background:var(--surface2)">
+     <strong>🏦 رصيد فوري قبل التسوية: ${money(f.expected)}</strong>
+     ${net<0
+       ? (Math.abs(net)>f.expected+0.005
+          ? `<p class="money-negative">⚠️ العجز المتبقي ${money(Math.abs(net))} أكبر من رصيد فوري المتاح ${money(f.expected)}. لا يمكن إغلاق الدورة.</p>`
+          : `<p class="muted">سيتم تسجيل سحب فوري فقط بقيمة ${money(Math.abs(net))} بعد المقاصة.</p>`)
+       : net>0
+          ? `<p class="muted">لن يتم سحب أي مبلغ من فوري بسبب العجز؛ سيتم التعامل فقط مع صافي الفائض.</p>`
+          : `<p class="muted">الفائض والعجز متساويان، لذلك لا يوجد تأثير على فوري.</p>`}
+   </div>`,d=>{
+   const rows=net>0?[...document.querySelectorAll(".surplus-row")].map(r=>({method:r.querySelector("select").value,amount:num(r.querySelector("input").value)})):[];
+   const total=sum(rows.map(x=>x.amount));
+   if(net>0 && Math.abs(total-net)>0.005){alert(`يجب توزيع صافي الفائض ${money(net)} بالكامل. الموزع الآن ${money(total)}.`);return}
+   if(net<0 && Math.abs(net)>f.expected+0.005){alert(`لا يمكن إغلاق الدورة: العجز المتبقي بعد المقاصة ${money(Math.abs(net))} أكبر من رصيد فوري المتاح ${money(f.expected)}.`);return}
+
+   rows.forEach(x=>{
+     if(x.amount<=0)return;
+     const method=x.method, desc=`صافي فائض الأظرف → ${db.savingsMethods.find(m=>m.id===method)?.name}`;
+     c.savings.push({id:uid(),methodId:method,amount:x.amount,description:desc,date:today()});
+     addTransaction({cycleId:c.id,type:"فائض ظرف",description:desc,amount:x.amount,account:db.savingsMethods.find(m=>m.id===method)?.name});
+     if(method==="fawry")addFawryDepositInternal(c,x.amount,desc,today(),false);
+   });
+
+   if(net<0){
+     const withdrawal=Math.abs(net);
+     const desc=`تغطية صافي عجز الأظرف من فوري`;
+     db.fawry.transactions.push({id:uid(),cycleId:c.id,type:"withdrawal",amount:withdrawal,description:desc,date:today()});
+     addTransaction({cycleId:c.id,type:"سحب فوري",description:desc,amount:withdrawal,account:"فوري"});
+   }
+
+   c.closed=true;c.endDate=today();
+   save();closeModal();render();
+   toast(net>0?`تم إغلاق الدورة وتوزيع صافي فائض ${money(net)}.`:net<0?`تم إغلاق الدورة وسحب صافي عجز ${money(Math.abs(net))} من فوري.`:`تم إغلاق الدورة بدون فائض أو عجز مستحق.`);
+ });
+ if(net>0)addSurplusRow();
+}
+function addSurplusRow(){
+ const box=document.getElementById("surplusRows");if(!box)return;
+ const row=document.createElement("div");row.className="surplus-row";row.style.cssText="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px";
+ row.innerHTML=`<select style="padding:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:10px">${db.savingsMethods.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join("")}</select><input type="number" min="0" step=".01" placeholder="المبلغ" style="padding:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:10px"><button type="button" class="btn btn-danger btn-sm">×</button>`;
+ row.querySelector("button").onclick=()=>{row.remove();updateSurplusTotal()};row.querySelector("input").oninput=updateSurplusTotal;box.appendChild(row);
+}
+function updateSurplusTotal(){const vals=[...document.querySelectorAll(".surplus-row input")].map(x=>num(x.value));const el=document.getElementById("surplusTotal");if(el)el.textContent=`الموزع: ${money(sum(vals))}`}
+
+function openDebtSetup(){
+ modal("⚙️ إعداد إجمالي الدين",`<div class="form-group"><label>إجمالي الدين الأصلي</label><input name="original" type="number" min="0" step=".01" value="${db.debt.original}" required></div>`,d=>{db.debt.original=num(d.get("original"));save();closeModal();render();toast("تم تحديث إجمالي الدين.")});
+}
+function openDebtPayment(){
+ const c=current(); if(!c){alert("ابدأ دورة مالية أولًا.");return}
+ modal("＋ تسجيل سداد دين",`<div class="form-grid"><div class="form-group"><label>المبلغ</label><input name="amount" type="number" min=".01" step=".01" required></div><div class="form-group"><label>التاريخ</label><input name="date" type="date" value="${today()}"></div><div class="form-group full"><label>الوصف</label><input name="description" value="سداد دين" required></div></div>`,d=>{
+ const amount=num(d.get("amount"));if(amount>debtRemaining()){alert("المبلغ أكبر من المتبقي من الدين.");return}
+ const p={id:uid(),cycleId:c.id,amount,date:d.get("date")||today(),description:d.get("description")};db.debt.payments.push(p);addTransaction({cycleId:c.id,type:"سداد دين",description:p.description,amount,account:"الدين"});save();closeModal();render();toast("تم تسجيل سداد الدين.");
+ });
+}
+
+function exportBackup(){
+ const blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`budget-backup-${today()}.json`;a.click();URL.revokeObjectURL(a.href);toast("تم تصدير النسخة الاحتياطية.");
+}
+function exportPDF(){
+  const c=activeOrLatest();
+  if(!c){alert("لا توجد دورة مالية لتصدير تقريرها.");return}
+  const f=fawryForCycle(c), al=allocationStatus(c);
+  const savingsBy=db.savingsMethods.map(m=>({name:m.name,value:savingsByMethod(c,m.id)})).filter(x=>x.value>0);
+  const transactions=db.transactions.filter(t=>t.cycleId===c.id);
+  const reportRows=(c.envelopes||[]).map(e=>{
+    const entered=actualIsEntered(e), actual=entered?Number(e.actual||0):null, delta=entered?Number(e.planned||0)-actual:null;
+    return `<tr><td>${esc(e.name)}</td><td>${money(e.planned)}</td><td>${entered?money(actual):"لم يُدخل بعد"}</td><td class="${delta===null?"":delta>=0?"positive":"negative"}">${delta===null?"—":(delta>=0?"+":"")+money(delta)}</td></tr>`;
+  }).join("");
+  const expenseRows=(c.envelopes||[]).flatMap(e=>(e.expenses||[]).map(x=>`<tr><td>${esc(e.name)}</td><td>${esc(x.date||"")}</td><td>${esc(x.description||"")}</td><td>${money(x.amount)}</td></tr>`)).join("");
+  const txRows=transactions.map(t=>`<tr><td>${esc(t.date||"")}</td><td>${esc(t.type||"")}</td><td>${esc(t.description||"")}</td><td>${money(t.amount)}</td><td>${esc(t.account||"—")}</td></tr>`).join("");
+  const emergencyRows=(c.emergencies||[]).map(x=>`<tr><td>${esc(x.date||"")}</td><td>${esc(x.description||"")}</td><td>${money(x.amount)}</td><td>${esc(x.source||"")}</td></tr>`).join("");
+  const report=document.createElement("div");
+  report.id="printReport";
+  report.innerHTML=`
+    <div class="print-toolbar"><strong>📄 تقرير ${esc(cycleDisplayName(c))}</strong><button class="btn btn-primary" onclick="window.print()">🖨️ طباعة / حفظ PDF</button><button class="btn btn-secondary" onclick="document.getElementById('printReport').remove()">إغلاق</button></div>
+    <div class="print-sheet">
+      <header class="print-header"><div><h1>📊 تقرير الميزانية والإنفاق</h1><div class="print-muted">${esc(cycleDisplayName(c))} — ${esc(c.startDate||"")} ${c.endDate?"→ "+esc(c.endDate):"(مفتوحة)"}</div></div><div class="print-muted">تاريخ التقرير: ${today()}</div></header>
+      <div class="print-cards">
+        <div class="print-card"><div>إجمالي الدخل</div><strong>${money(cycleIncome(c))}</strong></div>
+        <div class="print-card"><div>المصروف الفعلي</div><strong>${money(cycleActual(c))}</strong></div>
+        <div class="print-card"><div>إجمالي التحويش</div><strong>${money(cycleSavings(c))}</strong></div>
+        <div class="print-card"><div>رصيد فوري</div><strong>${money(f.close?.actualBalance??f.expected)}</strong></div>
+      </div>
+      <h2>🏠 الأظرف — المخطط والفعلي</h2>
+      <table><thead><tr><th>البند</th><th>المخطط</th><th>الفعلي</th><th>فائض / عجز</th></tr></thead><tbody>${reportRows||'<tr><td colspan="4">لا توجد بنود.</td></tr>'}</tbody></table>
+      <h2>🧾 المصروفات المسجلة داخل الأظرف</h2>
+      <table><thead><tr><th>الظرف</th><th>التاريخ</th><th>الوصف</th><th>المبلغ</th></tr></thead><tbody>${expenseRows||'<tr><td colspan="4">لم يتم تسجيل مصروفات تفصيلية.</td></tr>'}</tbody></table>
+      <h2>🎯 توزيع التحويش</h2>
+      <table><thead><tr><th>وسيلة التحويش</th><th>المبلغ</th></tr></thead><tbody>${savingsBy.map(x=>`<tr><td>${esc(x.name)}</td><td>${money(x.value)}</td></tr>`).join("")||'<tr><td colspan="2">لا يوجد تحويش.</td></tr>'}</tbody></table>
+      <h2>🚨 المصاريف الطارئة</h2>
+      <table><thead><tr><th>التاريخ</th><th>الوصف</th><th>المبلغ</th><th>الدفع من</th></tr></thead><tbody>${emergencyRows||'<tr><td colspan="4">لا توجد مصاريف طارئة.</td></tr>'}</tbody></table>
+      <h2>🏦 فوري</h2>
+      <table><tbody><tr><th>رصيد البداية</th><td>${money(c.fawryOpening||0)}</td></tr><tr><th>الإيداعات</th><td>${money(f.deposits)}</td></tr><tr><th>السحوبات</th><td>${money(f.withdrawals)}</td></tr><tr><th>الرصيد المفترض</th><td>${money(f.expected)}</td></tr><tr><th>الرصيد الفعلي</th><td>${f.close?money(f.close.actualBalance):"لم يُدخل بعد"}</td></tr><tr><th>الفائدة</th><td>${f.interest===null?"لم تُحسب بعد":money(f.interest)}</td></tr></tbody></table>
+      <h2>🧾 سجل العمليات</h2>
+      <table><thead><tr><th>التاريخ</th><th>النوع</th><th>الوصف</th><th>المبلغ</th><th>الحساب / الوسيلة</th></tr></thead><tbody>${txRows||'<tr><td colspan="5">لا توجد عمليات.</td></tr>'}</tbody></table>
+      <h2>📌 ملخص الدورة</h2>
+      <table><tbody><tr><th>إجمالي الدخل</th><td>${money(al.income)}</td></tr><tr><th>المبلغ الموزع</th><td>${money(al.allocated)}</td></tr><tr><th>المتبقي غير الموزع</th><td>${money(al.remaining)}</td></tr><tr><th>سداد الدين خلال الدورة</th><td>${money(sum(db.debt.payments.filter(p=>p.cycleId===c.id).map(p=>p.amount)))}</td></tr><tr><th>المتبقي من الدين</th><td>${money(debtRemaining())}</td></tr></tbody></table>
+      <div class="print-footer">© Designed by Peter Kaisar — تقرير محلي Offline</div>
+    </div>`;
+  document.body.appendChild(report);
+}
+function clearAllData(){
+  if(!confirm("⚠️ تحذير: سيتم حذف كل بيانات الميزانية من هذا الجهاز. هل أنت متأكد؟"))return;
+  if(!confirm("تأكيد أخير: لا يمكن استرجاع البيانات بعد المسح إلا من Backup محفوظ مسبقًا. هل تريد المتابعة؟"))return;
+  localStorage.removeItem(KEY);
+  db=load();
+  render();
+  toast("تم مسح كل البيانات بنجاح.");
+}
+function restoreBackup(file){
+ if(!file)return;const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!x.cycles||!x.savingsMethods||!x.fawry||!x.debt)throw Error();if(confirm("سيتم استبدال البيانات الحالية. هل أنت متأكد؟")){db=x;save();render();toast("تمت استعادة البيانات.");}}catch(e){alert("ملف Backup غير صالح.");}};r.readAsText(file);
+}
+function showPage(page){
+ document.querySelectorAll(".nav-item,.mobile-nav-item").forEach(x=>x.classList.toggle("active",x.dataset.page===page));
+ document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));document.getElementById("page-"+page).classList.add("active");
+ if(page==="reports")renderReports();
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+window.approveCycle=approveCycle;window.showPage=showPage;window.openExpense=openExpense;window.deleteExpense=deleteExpense;window.openNewCycle=openNewCycle;window.openIncome=openIncome;window.openMidCycleIncome=openMidCycleIncome;window.selectCycle=selectCycle;window.openEmergency=openEmergency;window.deleteIncome=deleteIncome;window.openEnvelope=openEnvelope;window.deleteEnvelope=deleteEnvelope;window.openSavings=openSavings;window.openMethod=openMethod;window.openFawryDeposit=openFawryDeposit;window.openFawryWithdrawal=openFawryWithdrawal;window.openFawryClose=openFawryClose;window.closeCycle=closeCycle;window.addSurplusRow=addSurplusRow;window.openDebtSetup=openDebtSetup;window.openDebtPayment=openDebtPayment;window.exportBackup=exportBackup;window.restoreBackup=restoreBackup;window.exportPDF=exportPDF;window.clearAllData=clearAllData;window.buildReport=buildReport;window.closeModal=closeModal;window.render=render;
+
+document.addEventListener("click",e=>{
+  const btn=e.target.closest?.('[data-action="add-expense"]');
+  if(btn){
+    e.preventDefault();
+    e.stopPropagation();
+    const id=btn.getAttribute("data-envelope-id");
+    if(id) openExpense(id);
+  }
+});
+document.querySelectorAll(".nav-item,.mobile-nav-item").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.page)));
+document.getElementById("newCycleBtn").addEventListener("click",openNewCycle);
+document.getElementById("closeCycleTopBtn").addEventListener("click",closeCycle);
+document.getElementById("pdfBtn").addEventListener("click",exportPDF);
+document.getElementById("themeBtn").addEventListener("click",()=>{db.settings.theme=db.settings.theme==="dark"?"light":"dark";save();render()});
+if(db.settings.theme==="dark")document.body.classList.add("dark");
+render();
+})();

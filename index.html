@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f172a">
+  <title>ميزانيتي — إدارة الميزانية والادخار</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">₿</div>
+      <div>
+        <h1>ميزانيتي</h1>
+        <p>إدارة الميزانية والادخار — Offline</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="btn btn-danger" id="closeCycleTopBtn">🔒 إغلاق الدورة</button>
+      <button class="btn btn-primary" id="newCycleBtn">🟢 بدء دورة مالية جديدة</button>
+      <button class="btn btn-secondary" id="pdfBtn">📄 تصدير PDF</button>
+      <button class="icon-btn" id="themeBtn" title="تبديل المظهر">◐</button>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <nav>
+        <button class="nav-item active" data-page="dashboard">📊 <span>Dashboard</span></button>
+        <button class="nav-item" data-page="income">💵 <span>مصادر الدخل</span></button>
+        <button class="nav-item" data-page="envelopes">🏠 <span>الأظرف</span></button>
+        <button class="nav-item" data-page="savings">🎯 <span>التحويش</span></button>
+        <button class="nav-item" data-page="fawry">🏦 <span>فوري</span></button>
+        <button class="nav-item" data-page="debt">💳 <span>الدين</span></button>
+        <button class="nav-item" data-page="transactions">🧾 <span>سجل العمليات</span></button>
+        <button class="nav-item" data-page="reports">📈 <span>التقارير</span></button>
+        <button class="nav-item" data-page="backup">📦 <span>Backup / Restore</span></button>
+      </nav>
+      <div class="sidebar-footer">© Designed by Peter Kaisar</div>
+    </aside>
+
+    <main class="content">
+      <section id="page-dashboard" class="page active"></section>
+      <section id="page-income" class="page"></section>
+      <section id="page-envelopes" class="page"></section>
+      <section id="page-savings" class="page"></section>
+      <section id="page-fawry" class="page"></section>
+      <section id="page-debt" class="page"></section>
+      <section id="page-transactions" class="page"></section>
+      <section id="page-reports" class="page"></section>
+      <section id="page-backup" class="page"></section>
+    </main>
+  </div>
+
+
+  <nav class="mobile-bottom-nav" aria-label="التنقل السريع">
+    <button class="mobile-nav-item active" data-page="dashboard">📊<span>الرئيسية</span></button>
+    <button class="mobile-nav-item" data-page="envelopes">🏠<span>الأظرف</span></button>
+    <button class="mobile-nav-item" data-page="savings">🎯<span>التحويش</span></button>
+    <button class="mobile-nav-item" data-page="fawry">🏦<span>فوري</span></button>
+    <button class="mobile-nav-item" data-page="reports">📈<span>التقارير</span></button>
+  </nav>
+
+  <div id="modalRoot"></div>
+  <script src="app.js"></script>
+  <script>if ("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));</script>
+</body>
+</html>
